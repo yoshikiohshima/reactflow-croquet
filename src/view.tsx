@@ -60,8 +60,10 @@ const FlowView = () => {
     });
 
     const myOnNodesChange = (actions) => {
-        publishNodesChange({actions, viewId});
-        onNodesChange(actions);
+      const nodeOwnerMap = model.nodeOwnerMap;
+      const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id) === viewId);
+        publishNodesChange({actions: filtered, viewId});
+        onNodesChange(filtered);
     };
 
     const myOnEdgesChange = (actions) => {

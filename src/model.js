@@ -119,7 +119,10 @@ export class FlowModel extends Model {
             },
         ];
 
+        this.nodeOwnerMap = new Map();
+
         this.subscribe(this.id, "updateNodes", "updateNodes");
+        this.subscribe(this.sessionId, "view-exit", "viewExit");
     }
 
     updateNodes(data) {
@@ -132,20 +135,40 @@ export class FlowModel extends Model {
             }
             return -1;
         }
-            
+       
         actions.forEach((action) => {
             let index = findNodeIndex(action);
             if (index >= 0)  {
- //               console.log(action);
+               // console.log(action);
                 if (action.type === "dimensions") {
-                  this.nodes[index][action.type] = action[action.type];
+                    this.nodes[index][action.type] = action[action.type];
+                } else if (action.type === "select") {
+                    // console.log("select", viewId);
+                    
                 } else if (action.type === "position" && action.dragging) {
+                    // console.log("drag", this.nodeOwnerMap.get(action.id), viewId);
+                    if (!this.nodeOwnerMap.get(action.id)) {
+                        // console.log("set owner", viewId);
+                        this.nodeOwnerMap.set(action.id, viewId);
+                    } else if (this.nodeOwnerMap.get(action.id) !== viewId) {
+                        // console.log("returning", this.nodeOwnerMap.get(action.id), viewId);
+                        return;
+                    }
                     this.nodes[index][action.type] = action[action.type];
                     this.nodes[index]["positionAbsolute"] = action["positionAbsolute"];
+                } else if (action.type === "position" && !action.dragging) {
+                    // console.log("pointerUp", viewId)
+                    if (this.nodeOwnerMap.get(action.id) === viewId) {
+                        this.nodeOwnerMap.delete(action.id);
+                    }
                 }
             }
         });
         this.publish(this.id, "nodeUpdated", data);
+    }
+
+    viewExit(viewId) {
+        this.nodeOwnerMap.delete(viewId);
     }
 }
 
