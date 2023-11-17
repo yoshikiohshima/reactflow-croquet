@@ -4,12 +4,12 @@ import ReactDOM from 'react-dom/client'
 import {FlowModel} from "./model.ts";
 import FlowView from './view';
 
+import './index.css';
+
 import {
     InCroquetSession,
     App as CroquetApp
 } from "@croquet/react";
-
-import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
