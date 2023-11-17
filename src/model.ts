@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { MarkerType, Position } from 'reactflow';
+import { MarkerType, Position, addEdge } from 'reactflow';
 import { Model } from "@croquet/react";
 
 export class FlowModel extends Model {
@@ -125,7 +125,10 @@ export class FlowModel extends Model {
 
         this.nodeOwnerMap = new Map();
 
+        this.nextEdgeId = 0;
+
         this.subscribe(this.id, "updateNodes", "updateNodes");
+        this.subscribe(this.id, "addEdge", "addEdge");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
     }
 
@@ -143,6 +146,14 @@ export class FlowModel extends Model {
         actions.forEach((action) => {
             let index = findNodeIndex(action);
             if (index >= 0)  {
+                // https://reactflow.dev/api-reference/types/node-change
+                // export type NodeChange =
+                // | NodeDimensionChange
+                // | NodePositionChange
+                // | NodeSelectionChange
+                // | NodeRemoveChange
+                // | NodeAddChange
+                // | NodeResetChange;
                 // console.log(action);
                 if (action.type === "dimensions") {
                     this.nodes[index][action.type] = action[action.type];
@@ -169,6 +180,21 @@ export class FlowModel extends Model {
             }
         });
         this.publish(this.id, "nodeUpdated", data);
+    }
+
+    newEdgeId() {
+        return `${this.nextEdgeId++}`;
+    }
+
+    addEdge(data) {
+        console.log(data);
+        let action = data.action;
+        if (action.id === undefined) {
+            action.id = this.newEdgeId();
+        }
+        const newEdges = addEdge(data.action, this.edges);
+        this.edges = newEdges;
+        this.publish(this.id, "edgeAdded", {action, viewId: data.viewId});
     }
 
     viewExit(viewId) {

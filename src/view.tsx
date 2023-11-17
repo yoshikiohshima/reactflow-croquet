@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useCallback } from 'react';
 import ReactFlow, {
     addEdge,
@@ -14,8 +13,6 @@ import {
     useViewId,
     useModelRoot,
     useSubscribe,
-    useUpdateCallback,
-    useSyncedCallback,
 } from "@croquet/react";
 
 import CustomNode from './CustomNode';
@@ -36,11 +33,10 @@ const minimapStyle = {
 const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInstance);
 
 const FlowView = () => {
-    const model:FlowModel = useModelRoot() as FlowModel
+    const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
-    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
     // we are using a bit of a shortcut here to adjust the edge type
     // this could also be done with a custom edge for example
@@ -54,11 +50,17 @@ const FlowView = () => {
     });
 
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
+    const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
         // console.log("view", model.nodes);
         onNodesChange(data.actions);
+    });
+
+    useSubscribe(model.id, "edgeAdded", (data) => {
+        // if (viewId === data.viewId) {return;}
+        setEdges(() => model.edges);
     });
 
     const myOnNodesChange = (actions) => {
@@ -73,13 +75,20 @@ const FlowView = () => {
         onEdgesChange(actions);
     };
 
+    const myOnConnect = useCallback((params) => {
+        // presumably this is a new connection, so no need to check if somebody else has grabbed it.
+        console.log("connect", params);
+        publishAddEdge({action: params, viewId});
+        setEdges((eds) => addEdge(params, eds));
+    }, [publishAddEdge, setEdges, viewId]);
+
   return (
     <ReactFlow
       nodes={nodes}
       edges={edgesWithUpdatedTypes}
       onNodesChange={myOnNodesChange}
       onEdgesChange={myOnEdgesChange}
-      onConnect={onConnect}
+      onConnect={myOnConnect}
       onInit={onInit}
       fitView
       attributionPosition="top-right"
@@ -93,4 +102,3 @@ const FlowView = () => {
 };
 
 export default FlowView;
-
