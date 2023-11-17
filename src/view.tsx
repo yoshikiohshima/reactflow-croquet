@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useCallback } from 'react';
 import ReactFlow, {
     addEdge,
@@ -35,7 +36,7 @@ const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInsta
 const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
-    const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
+    const [nodes, _setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
 
     // we are using a bit of a shortcut here to adjust the edge type
@@ -58,9 +59,9 @@ const FlowView = () => {
         onNodesChange(data.actions);
     });
 
-    useSubscribe(model.id, "edgeAdded", (data) => {
+    useSubscribe(model.id, "edgeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
-        setEdges(() => model.edges);
+        setEdges((_edges) => model.edges);
     });
 
     const myOnNodesChange = (actions) => {

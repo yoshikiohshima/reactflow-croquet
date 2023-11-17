@@ -144,7 +144,7 @@ export class FlowModel extends Model {
         }
        
         actions.forEach((action) => {
-            let index = findNodeIndex(action);
+            const index = findNodeIndex(action);
             if (index >= 0)  {
                 // https://reactflow.dev/api-reference/types/node-change
                 // export type NodeChange =
@@ -187,8 +187,8 @@ export class FlowModel extends Model {
     }
 
     addEdge(data) {
-        console.log(data);
-        let action = data.action;
+        // console.log(data);
+        const action = data.action;
         if (action.id === undefined) {
             action.id = this.newEdgeId();
         }
