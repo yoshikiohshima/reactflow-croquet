@@ -10,5 +10,4 @@ export default defineConfig({
             "@croquet/react": path.resolve(__dirname, "node_modules/@croquet/react/index.ts")
         }
     },
-    base: "./"
 })
