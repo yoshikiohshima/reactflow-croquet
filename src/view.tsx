@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useCallback } from 'react';
 import ReactFlow, {
   addEdge,
@@ -22,6 +23,8 @@ import CustomNode from './CustomNode';
 import 'reactflow/dist/style.css';
 import './overview.css';
 
+import {FlowModel} from "./model";
+
 const nodeTypes = {
   custom: CustomNode,
 };
@@ -33,7 +36,7 @@ const minimapStyle = {
 const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInstance);
 
 const FlowView = () => {
-  const model = useModelRoot();
+  const model:FlowModel = useModelRoot() as FlowModel
   const viewId = useViewId();
   const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);

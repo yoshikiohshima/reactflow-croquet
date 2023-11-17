@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
-import {FlowModel} from "./model.js";
+import {FlowModel} from "./model.ts";
 import FlowView from './view';
 
 import {

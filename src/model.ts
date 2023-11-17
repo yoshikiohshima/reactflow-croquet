@@ -1,7 +1,11 @@
+// @ts-nocheck
 import { MarkerType, Position } from 'reactflow';
 import { Model } from "@croquet/react";
 
 export class FlowModel extends Model {
+    nodes: Array<object>;
+    edges: Array<object>;
+    nodeOwnerMap: Map<string, string>;
     init(_options) {
         this.nodes = [
             {
