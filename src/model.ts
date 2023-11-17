@@ -143,7 +143,7 @@ export class FlowModel extends Model {
         actions.forEach((action) => {
             let index = findNodeIndex(action);
             if (index >= 0)  {
-               // console.log(action);
+                // console.log(action);
                 if (action.type === "dimensions") {
                     this.nodes[index][action.type] = action[action.type];
                 } else if (action.type === "select") {

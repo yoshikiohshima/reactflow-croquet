@@ -5,12 +5,11 @@ import {FlowModel} from "./model.ts";
 import FlowView from './view';
 
 import {
-  InCroquetSession,
-  App as CroquetApp
+    InCroquetSession,
+    App as CroquetApp
 } from "@croquet/react";
 
 import './index.css';
-import './App.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

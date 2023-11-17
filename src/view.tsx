@@ -1,21 +1,21 @@
 // @ts-nocheck
 import React, { useCallback } from 'react';
 import ReactFlow, {
-  addEdge,
-  MiniMap,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
+    addEdge,
+    MiniMap,
+    Controls,
+    Background,
+    useNodesState,
+    useEdgesState,
 } from 'reactflow';
 
 import {
-  usePublish,
-  useViewId,
-  useModelRoot,
-  useSubscribe,
-  useUpdateCallback,
-  useSyncedCallback,
+    usePublish,
+    useViewId,
+    useModelRoot,
+    useSubscribe,
+    useUpdateCallback,
+    useSyncedCallback,
 } from "@croquet/react";
 
 import CustomNode from './CustomNode';
@@ -26,45 +26,44 @@ import './overview.css';
 import {FlowModel} from "./model";
 
 const nodeTypes = {
-  custom: CustomNode,
+    custom: CustomNode,
 };
 
 const minimapStyle = {
-  height: 120,
+    height: 120,
 };
 
 const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInstance);
 
 const FlowView = () => {
-  const model:FlowModel = useModelRoot() as FlowModel
-  const viewId = useViewId();
-  const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
+    const model:FlowModel = useModelRoot() as FlowModel
+    const viewId = useViewId();
+    const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
+    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
 
-  // we are using a bit of a shortcut here to adjust the edge type
-  // this could also be done with a custom edge for example
-  const edgesWithUpdatedTypes = edges.map((edge) => {
-    if (edge.sourceHandle) {
-    const edgeType = "";
-   edge.type = edgeType;
-    }
+    // we are using a bit of a shortcut here to adjust the edge type
+    // this could also be done with a custom edge for example
+    const edgesWithUpdatedTypes = edges.map((edge) => {
+        if (edge.sourceHandle) {
+            const edgeType = "";
+            edge.type = edgeType;
+        }
 
-    return edge;
-  });
-
+        return edge;
+    });
 
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
-      if (viewId === data.viewId) {return;}
-      // console.log("view", model.nodes);
-      onNodesChange(data.actions);
+        if (viewId === data.viewId) {return;}
+        // console.log("view", model.nodes);
+        onNodesChange(data.actions);
     });
 
     const myOnNodesChange = (actions) => {
-      const nodeOwnerMap = model.nodeOwnerMap;
-      const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id) === viewId);
+        const nodeOwnerMap = model.nodeOwnerMap;
+        const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id) === viewId);
         publishNodesChange({actions: filtered, viewId});
         onNodesChange(filtered);
     };
