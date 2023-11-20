@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import ReactFlow, {
     addEdge,
     MiniMap,
@@ -40,6 +40,7 @@ const FlowView = () => {
     const viewId = useViewId();
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
+    const [dragTime, setDragTime] = useState(0);
 
     // we are using a bit of a shortcut here to adjust the edge type
     // this could also be done with a custom edge for example
@@ -75,6 +76,9 @@ const FlowView = () => {
     const myOnNodesChange = (actions) => {
         const nodeOwnerMap = model.nodeOwnerMap;
         const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id) === viewId);
+        const now = Date.now();
+        if (now - dragTime < 20) {return;}
+        setDragTime((_old) => now);
         publishNodesChange({actions: filtered, viewId});
         onNodesChange(filtered);
     };
