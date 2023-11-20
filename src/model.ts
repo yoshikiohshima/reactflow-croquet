@@ -126,9 +126,11 @@ export class FlowModel extends Model {
         this.nodeOwnerMap = new Map();
 
         this.nextEdgeId = 0;
+        this.nextNodeId = 0;
 
         this.subscribe(this.id, "updateNodes", "updateNodes");
         this.subscribe(this.id, "addEdge", "addEdge");
+        this.subscribe(this.id, "addNode", "addNode");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
     }
 
@@ -183,7 +185,11 @@ export class FlowModel extends Model {
     }
 
     newEdgeId() {
-        return `${this.nextEdgeId++}`;
+        return `e${this.nextEdgeId++}`;
+    }
+
+    newNodeId() {
+        return `n${this.nextNodeId++}`;
     }
 
     addEdge(data) {
@@ -195,6 +201,17 @@ export class FlowModel extends Model {
         const newEdges = addEdge(data.action, this.edges);
         this.edges = newEdges;
         this.publish(this.id, "edgeAdded", {action, viewId: data.viewId});
+    }
+
+    addNode(data) {
+        const {node, viewId} = data;
+        // console.log(data);
+        if (node.id === undefined) {
+            node.id = this.newNodeId();
+        }
+        const newNodes = [...this.nodes, node];
+        this.nodes = newNodes;
+        this.publish(this.id, "nodeAdded", {node, viewId});
     }
 
     viewExit(viewId) {

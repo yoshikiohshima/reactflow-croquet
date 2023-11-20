@@ -22,7 +22,7 @@ const options = [
 
 function Select({ value, handleId, nodeId }) {
   const { setNodes } = useReactFlow();
-    const store = useStoreApi();
+  const store = useStoreApi();
   const onChange = (evt) => {
       const { nodeInternals } = store.getState();
     setNodes(

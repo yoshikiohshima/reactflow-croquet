@@ -7,6 +7,7 @@ import ReactFlow, {
     Background,
     useNodesState,
     useEdgesState,
+    Position,
 } from 'reactflow';
 
 import {
@@ -17,6 +18,7 @@ import {
 } from "@croquet/react";
 
 import CustomNode from './CustomNode';
+import {CreateNodeButton} from './CreateButton';
 
 import 'reactflow/dist/style.css';
 import './overview.css';
@@ -36,7 +38,7 @@ const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInsta
 const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
-    const [nodes, _setNodes, onNodesChange] = useNodesState(model.nodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
 
     // we are using a bit of a shortcut here to adjust the edge type
@@ -52,6 +54,7 @@ const FlowView = () => {
 
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
     const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
+    const publishAddNode = usePublish((data) => [model.id, 'addNode', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
@@ -62,6 +65,11 @@ const FlowView = () => {
     useSubscribe(model.id, "edgeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
         setEdges((_edges) => model.edges);
+    });
+
+    useSubscribe(model.id, "nodeAdded", (_data) => {
+        // if (viewId === data.viewId) {return;}
+        setNodes(model.nodes);
     });
 
     const myOnNodesChange = (actions) => {
@@ -83,22 +91,46 @@ const FlowView = () => {
         setEdges((eds) => addEdge(params, eds));
     }, [publishAddEdge, setEdges, viewId]);
 
-  return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edgesWithUpdatedTypes}
-      onNodesChange={myOnNodesChange}
-      onEdgesChange={myOnEdgesChange}
-      onConnect={myOnConnect}
-      onInit={onInit}
-      fitView
-      attributionPosition="top-right"
-      nodeTypes={nodeTypes}
-    >
-      <MiniMap style={minimapStyle} zoomable pannable />
-      <Controls />
-      <Background color="#aaa" gap={16} />
-    </ReactFlow>
+    const create = useCallback((_evt) => {
+        const node = {
+                type: 'output',
+                data: {
+                    label: 'custom style',
+                },
+                className: 'circle',
+                style: {
+                    background: '#2B6CB0',
+                    color: 'white',
+                },
+                position: { x: 400, y: 200 },
+                sourcePosition: Position.Right,
+                targetPosition: Position.Left,
+        };
+        publishAddNode({node, viewId});
+    }, [publishAddNode, viewId]);
+
+    return (
+        <div id="all">
+            <div id="sidebar">
+            <CreateNodeButton id="createNode" onClick={create}/>
+            </div>
+            <ReactFlow
+                id="flow"
+                nodes={nodes}
+                edges={edgesWithUpdatedTypes}
+                onNodesChange={myOnNodesChange}
+                onEdgesChange={myOnEdgesChange}
+                onConnect={myOnConnect}
+                onInit={onInit}
+                fitView
+                attributionPosition="top-right"
+                nodeTypes={nodeTypes}
+            >
+            <MiniMap style={minimapStyle} zoomable pannable />
+            <Controls />
+            <Background color="#aaa" gap={16} />
+            </ReactFlow>
+        </div>
   );
 };
 
