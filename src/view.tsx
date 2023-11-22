@@ -181,7 +181,7 @@ const FlowView = () => {
                 edges={edgesWithUpdatedTypes}
                 onNodesChange={myOnNodesChange}
                 onEdgesChange={myOnEdgesChange}
- onPointerMove={pointerMove}                
+                onPointerMove={pointerMove}                
                 onConnect={myOnConnect}
                 onInit={onInit}
                 fitView
