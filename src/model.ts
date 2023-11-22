@@ -124,6 +124,7 @@ export class FlowModel extends Model {
         ];
 
         this.nodeOwnerMap = new Map();
+        this.pointerMap = new Map(); // {viewId -> {x, y color}}
 
         this.nextEdgeId = 0;
         this.nextNodeId = 0;
@@ -131,6 +132,7 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "updateNodes", "updateNodes");
         this.subscribe(this.id, "addEdge", "addEdge");
         this.subscribe(this.id, "addNode", "addNode");
+        this.subscribe(this.id, "pointerMove", "pointerMove");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
     }
 
@@ -214,8 +216,45 @@ export class FlowModel extends Model {
         this.publish(this.id, "nodeAdded", {node, viewId});
     }
 
+    pointerMove(data) {
+        const {x, y, viewId} = data;
+        if (!this.pointerMap.get(viewId)) {
+            this.pointerMap.set(viewId, {color: this.randomColor()});
+        }
+        this.pointerMap.get(viewId).x = x;
+        this.pointerMap.get(viewId).y = y;
+        this.publish(this.id, "pointerMoved", viewId);
+    }
+
+    randomColor() {
+        let h = Math.random();
+        let s = 0.8;
+        let v = 0.8;
+        let r, g, b, i, f, p, q, t;
+        i = Math.floor(h * 6);
+        f = h * 6 - i;
+        p = v * (1 - s);
+        q = v * (1 - f * s);
+        t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v, g = t, b = p; break;
+            case 1: r = q, g = v, b = p; break;
+            case 2: r = p, g = v, b = t; break;
+            case 3: r = p, g = q, b = v; break;
+            case 4: r = t, g = p, b = v; break;
+            case 5: r = v, g = p, b = q; break;
+        }
+        return `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b * 255).toString(16).padStart(2, "0")}`;
+    }
+
     viewExit(viewId) {
+        console.log("view-exit", viewId);
         this.nodeOwnerMap.delete(viewId);
+
+        if (this.pointerMap.get(viewId)) {
+            this.pointerMap.delete(viewId);
+            this.publish(this.id, "pointerMoved", viewId);
+        }
     }
 }
 
