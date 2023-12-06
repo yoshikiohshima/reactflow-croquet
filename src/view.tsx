@@ -21,7 +21,7 @@ import {
 } from "@croquet/react";
 
 import CustomNode from './CustomNode';
-import {CreateNodeButton} from './CreateButton';
+import {CreateNodeButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
 import './overview.css';
@@ -95,6 +95,8 @@ const FlowView = () => {
     const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
     const publishAddNode = usePublish((data) => [model.id, 'addNode', data]);
     const publishPointerMove = usePublish((data) => [model.id, 'pointerMove', data]);
+    const publishUndo = usePublish((data) => [model.id, 'undo', data]);
+    const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
@@ -118,7 +120,7 @@ const FlowView = () => {
 
     const myOnNodesChange = (actions) => {
         const nodeOwnerMap = model.nodeOwnerMap;
-        const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id) === viewId);
+        const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id)?.viewId === viewId);
         const now = Date.now();
         if (now - dragTime < 20) {return;}
         setDragTime((_old) => now);
@@ -139,22 +141,31 @@ const FlowView = () => {
     }, [publishAddEdge, setEdges, viewId]);
 
     const create = useCallback((_evt) => {
+        let color = model.pointerMap.get(viewId)?.color;
         const node = {
                 type: 'output',
                 data: {
-                    label: 'custom style',
+                    label: 'circle ' + `${Math.random()}`.slice(2, 5),
                 },
                 className: 'circle',
                 style: {
-                    background: '#2B6CB0',
+                    background: color || '#2B6CB0',
                     color: 'white',
                 },
-                position: { x: 400, y: 200 },
+                position: { x: 400 + (Math.random() * 100 - 50), y: 200 + (Math.random() + 100 - 50)},
                 sourcePosition: Position.Right,
                 targetPosition: Position.Left,
         };
         publishAddNode({node, viewId});
     }, [publishAddNode, viewId]);
+
+    const undo = useCallback((_evt) => {
+        publishUndo({viewId});
+    }, [publishUndo, viewId]);
+
+    const redo = useCallback((_evt) => {
+        publishRedo({viewId});
+    }, [publishRedo, viewId]);
 
     const viewportCallback = useCallback((x, y, zoom, top, left) => {
         // console.log(x, y, zoom, top, left);
@@ -173,7 +184,9 @@ const FlowView = () => {
         <ReactFlowProvider>
             <div id="all">
             <div id="sidebar">
-            <CreateNodeButton id="createNode" onClick={create}/>
+                <CreateNodeButton id="createNode" onClick={create}/>
+                <UndoButton id="undo" onClick={undo}/>
+                <RedoButton id="redo" onClick={redo}/>
             </div>
             <ReactFlow
                 id="flow"
