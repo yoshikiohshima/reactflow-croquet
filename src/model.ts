@@ -51,6 +51,8 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "updateNodes", "updateNodes");
         this.subscribe(this.id, "addEdge", "addEdge");
         this.subscribe(this.id, "addNode", "addNode");
+        this.subscribe(this.id, "updateTextNode", "updateTextNode");
+        
         this.subscribe(this.id, "pointerMove", "pointerMove");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
 
@@ -58,19 +60,19 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "redo", "redo");
     }
 
+    findNodeIndex(node) {
+        for (let i = 0; i < this.nodes.length; i++) {
+            if (this.nodes[i].id === node.id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     updateNodes(data) {
         const {actions, viewId} = data;
-        const findNodeIndex = (node) => {
-            for (let i = 0; i < this.nodes.length; i++) {
-                if (this.nodes[i].id === node.id) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         actions.forEach((action) => {
-            const index = findNodeIndex(action);
+            const index = this.findNodeIndex(action);
             if (index >= 0)  {
                 // https://reactflow.dev/api-reference/types/node-change
                 // export type NodeChange =
@@ -100,6 +102,7 @@ export class FlowModel extends Model {
                     }
                     this.nodes[index][action.type] = action[action.type];
                     this.nodes[index]["positionAbsolute"] = action["positionAbsolute"];
+                    console.log(action["positionAbsolute"]);
                 } else if (action.type === "position" && !action.dragging) {
                     // console.log("pointerUp", viewId)
                     if (this.nodeOwnerMap.get(action.id)?.viewId === viewId) {
@@ -109,6 +112,14 @@ export class FlowModel extends Model {
             }
         });
         this.publish(this.id, "nodeUpdated", data);
+    }
+
+    updateTextNode(obj) {
+        const index = this.findNodeIndex(obj);
+        if (index >= 0) {
+            this.nodes[index] = {...this.nodes[index], data: obj.data};
+            this.publish(this.id, "textNodeUpdated", obj);
+        }
     }
 
     newEdgeId() {

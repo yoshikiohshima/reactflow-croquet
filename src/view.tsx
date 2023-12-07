@@ -20,17 +20,13 @@ import {
     useSubscribe,
 } from "@croquet/react";
 
-import CustomNode from './CustomNode';
+import {CustomNode, TextNode} from './CustomNode';
 import {CreateNodeButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
 import './overview.css';
 
 import {FlowModel} from "./model";
-
-const nodeTypes = {
-    custom: CustomNode,
-};
 
 const minimapStyle = {
     height: 120,
@@ -71,6 +67,11 @@ const Pointers = (props) => {
     );
 }
 
+const nodeTypes = {
+    custom: CustomNode,
+    text: TextNode
+};
+
 const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
@@ -99,9 +100,14 @@ const FlowView = () => {
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
+        console.log("view", model.nodes[3]);
         if (viewId === data.viewId) {return;}
-        // console.log("view", model.nodes);
         onNodesChange(data.actions);
+    });
+
+    useSubscribe(model.id, "textNodeUpdated", (data) => {
+        // if (viewId === data.viewId) {return;}
+        setNodes(model.nodes);
     });
 
     useSubscribe(model.id, "edgeAdded", (_data) => {
@@ -194,7 +200,7 @@ const FlowView = () => {
                 edges={edgesWithUpdatedTypes}
                 onNodesChange={myOnNodesChange}
                 onEdgesChange={myOnEdgesChange}
-                onPointerMove={pointerMove}                
+                onPointerMove={pointerMove}
                 onConnect={myOnConnect}
                 onInit={onInit}
                 fitView

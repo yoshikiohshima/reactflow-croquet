@@ -1,5 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useCallback } from 'react';
 import { Handle, useReactFlow, useStoreApi, Position } from 'reactflow';
+
+import {
+    usePublish,
+    useModelRoot,
+    useViewId
+} from "@croquet/react";
 
 const options = [
   {
@@ -57,7 +63,7 @@ function Select({ value, handleId, nodeId }) {
   );
 }
 
-function CustomNode({ id, data }) {
+function CustomNodeBody({ id, data }) {
   return (
     <>
       <div className="custom-node__header">
@@ -72,4 +78,33 @@ function CustomNode({ id, data }) {
   );
 }
 
-export default memo(CustomNode);
+function TextNodeBody({ id, data }) {
+    const model = useModelRoot();
+    const viewId = useViewId();
+    let text = data.text;
+    const [content, setContent] = useState(data.text);
+
+    if (content !== data.text) {
+        setContent(data.text);
+    }
+
+    const publishTextChange = usePublish((data) => [model.id, 'updateTextNode', data]);
+    
+    const onChange = useCallback((e) => {
+        publishTextChange({id, viewId, data: {text: e.target.value}});
+        text = e.target.value;
+        setContent(e.target.value);
+    }, [publishTextChange]);
+
+    return (
+        <>
+            <div className="custom-node__header">
+                This is a <strong>ediable text node</strong>
+            </div>
+            <textarea className="custom-node__body" value={content} onChange={onChange}></textarea>
+        </>
+    );
+}
+
+export const CustomNode = memo(CustomNodeBody);
+export const TextNode = memo(TextNodeBody);

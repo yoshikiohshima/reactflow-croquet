@@ -68,21 +68,11 @@ export const defaultValues = {
         },
         {
             id: '7',
-            type: 'default',
-            className: 'annotation',
-            /*
-              data: {
-              label: (
-              <>
-              On the bottom left you see the <strong>Controls</strong> and the bottom right the{' '}
-              <strong>MiniMap</strong>. This is also just a node 🥳
-              </>
-              ),
-              },
-            */
-            draggable: false,
-            selectable: false,
-            position: { x: 150, y: 400 },
+            type: 'text',
+            position: { x: 200, y: 400 },
+            data: {
+                text: "test text"
+            },
         },
     ],
 
