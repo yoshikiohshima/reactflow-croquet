@@ -33,8 +33,8 @@ export class FlowModel extends Model {
     edges: Array<object>;
     nodeOwnerMap: Map<string, object>;
     init(_options) {
-        this.nodes = defaultValues.nodes;
-        this.edges = defaultValues.edges;
+        this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
+        this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
 
         this.nodeOwnerMap = new Map();
         this.pointerMap = new Map(); // {viewId -> {x, y color}}
@@ -102,10 +102,27 @@ export class FlowModel extends Model {
                     }
                     this.nodes[index][action.type] = action[action.type];
                     this.nodes[index]["positionAbsolute"] = action["positionAbsolute"];
-                    console.log(action["positionAbsolute"]);
                 } else if (action.type === "position" && !action.dragging) {
                     // console.log("pointerUp", viewId)
                     if (this.nodeOwnerMap.get(action.id)?.viewId === viewId) {
+                        const commandId = this.nextCommandId++;
+                        const {position, positionAbsolute} = this.nodeOwnerMap.get(action.id);
+                        const event = {commandId, viewId, command: "moveNode", action: {
+                            oldPosition: position,
+                            id: action.id,
+                            oldPositionAbsolute: positionAbsolute,
+                            position: this.nodes[index].position,
+                            positionAbsolute: this.nodes[index].positionAbsolute
+                        }};
+
+                        let stack = this.undoStacks.get(viewId);
+                        if (!stack) {
+                            stack = [];
+                            this.undoStacks.set(viewId, stack);
+                        }
+                        stack.push(event);
+                        this.eventBuffer.push(event);
+                        console.log(this.eventBuffer, stack);
                         this.nodeOwnerMap.delete(action.id);
                     }
                 }
@@ -173,6 +190,11 @@ export class FlowModel extends Model {
             this.nodes = [...this.nodes, action.node];
         } else if (action.command === "addEdge") {
             this.edges = addEdge(data.action, this.edges);
+        } else if (action.command === "moveNode") {
+            const index = this.findNodeIndex(action.action);
+            this.nodes[index] = {...this.nodes[index],
+                                 position: {...action.action.position},
+                                 positionAbsolute: {...action.action.positionAbsolute}};
         }
     }
 
@@ -206,8 +228,8 @@ export class FlowModel extends Model {
         const lastCommand = undoList.pop();
         const index = this.eventBuffer.findIndex((c) => c.commandId === lastCommand.commandId);
 
-        this.nodes = defaultValues.nodes;
-        this.edges = defaultValues.edges;
+        this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
+        this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
 
         const newList = [];
 
@@ -243,7 +265,7 @@ export class FlowModel extends Model {
         this.processEvent(lastCommand);
         this.eventBuffer.push(lastCommand);
         undoList.push(lastCommand);
-        this.publish(this.id, "nodeAdded", {});
+        this.publish(this.id, "nodeAdded", {foo:true});
         this.publish(this.id, "edgeAdded", {});
         window.flowModel = this;
     }

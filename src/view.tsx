@@ -100,14 +100,13 @@ const FlowView = () => {
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
-        console.log("view", model.nodes[3]);
         if (viewId === data.viewId) {return;}
         onNodesChange(data.actions);
     });
 
     useSubscribe(model.id, "textNodeUpdated", (data) => {
         // if (viewId === data.viewId) {return;}
-        setNodes(model.nodes);
+        setNodes([...model.nodes]);
     });
 
     useSubscribe(model.id, "edgeAdded", (_data) => {
@@ -115,9 +114,9 @@ const FlowView = () => {
         setEdges((_edges) => model.edges);
     });
 
-    useSubscribe(model.id, "nodeAdded", (_data) => {
+    useSubscribe(model.id, "nodeAdded", (data) => {
         // if (viewId === data.viewId) {return;}
-        setNodes(model.nodes);
+        setNodes([...model.nodes]);
     });
 
     useSubscribe(model.id, "pointerMoved", (data) => {
