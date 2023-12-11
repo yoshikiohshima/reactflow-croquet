@@ -4,29 +4,26 @@ export const defaultValues = {
     nodes: [
         {
             id: '1',
-            type: 'input',
+            type: 'todo',
+            maxId: 2,
             data: {
-                label: 'Input Node',
+                todos: [
+                    {
+                        id : "t1",
+                        title: "Task 1",
+                        checked: false,
+                    },
+                    {
+                        id : "t2",
+                        title: "Task 2",
+                        checked: false,
+                    }
+                ]
             },
             position: { x: 250, y: 0 },
         },
         {
             id: '2',
-            data: {
-                label: 'Default Node',
-            },
-            position: { x: 100, y: 100 },
-        },
-        {
-            id: '3',
-            type: 'output',
-            data: {
-                label: 'Output Node',
-            },
-            position: { x: 400, y: 100 },
-        },
-        {
-            id: '4',
             type: 'custom',
             position: { x: 100, y: 200 },
             data: {
@@ -37,7 +34,7 @@ export const defaultValues = {
             },
         },
         {
-            id: '5',
+            id: '3',
             type: 'output',
             data: {
                 label: 'custom style',
@@ -52,7 +49,7 @@ export const defaultValues = {
             targetPosition: Position.Left,
         },
         {
-            id: '6',
+            id: '4',
             type: 'output',
             style: {
                 background: '#63B3ED',
@@ -67,7 +64,7 @@ export const defaultValues = {
             targetPosition: Position.Left,
         },
         {
-            id: '7',
+            id: '5',
             type: 'text',
             position: { x: 200, y: 400 },
             data: {
@@ -77,12 +74,10 @@ export const defaultValues = {
     ],
 
     edges: [
-        { id: 'e1-2', source: '1', target: '2', label: 'this is an edge label' },
-        { id: 'e1-3', source: '1', target: '3', animated: true },
         {
             id: 'e4-5',
-            source: '4',
-            target: '5',
+            source: '2',
+            target: '3',
             type: 'smoothstep',
             sourceHandle: 'handle-0',
             data: {
@@ -94,8 +89,8 @@ export const defaultValues = {
         },
         {
             id: 'e4-6',
-            source: '4',
-            target: '6',
+            source: '2',
+            target: '4',
             type: 'smoothstep',
             sourceHandle: 'handle-1',
             data: {

@@ -2,7 +2,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
-    useReactFlow,
     useViewport,
     addEdge,
     MiniMap,
@@ -20,7 +19,7 @@ import {
     useSubscribe,
 } from "@croquet/react";
 
-import {CustomNode, TextNode} from './CustomNode';
+import {CustomNode, TextNode, ToDoListNode} from './CustomNode';
 import {CreateNodeButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
@@ -36,11 +35,12 @@ const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInsta
 
 const ViewportDisplay = (props) => {
     const elem = document.getElementById("flow");
-    const rect = elem ? elem.getBoundingClientRect() : {top: 0, left: 0};
+    const {top, left} = elem ? elem.getBoundingClientRect() : {top: 0, left: 0};
     const {x, y, zoom} = useViewport();
+    const callback = props.callback;
     useEffect(() => {
-        props.callback(x, y, zoom, rect.top, rect.left);
-    }, [x, y, zoom]);
+        callback(x, y, zoom, top, left);
+    }, [x, y, zoom, top, left, callback]);
     
     return (
         <div style={{display: "none"}}></div>
@@ -51,8 +51,8 @@ const Pointers = (props) => {
     const {viewport, model, viewId} = props;
 
     const divs = [...model.pointerMap].map(([v, p]) => {
-        let x = p.x * viewport.zoom + viewport.x + viewport.left;
-        let y = p.y * viewport.zoom + viewport.y + viewport.top;
+        const x = p.x * viewport.zoom + viewport.x + viewport.left;
+        const y = p.y * viewport.zoom + viewport.y + viewport.top;
         const transform = `translateX(${x - 5}px) translateY(${y - 5}px)`;
         const display = viewId === v ? "none" : "inherit";
         return (
@@ -69,7 +69,8 @@ const Pointers = (props) => {
 
 const nodeTypes = {
     custom: CustomNode,
-    text: TextNode
+    text: TextNode,
+    todo: ToDoListNode
 };
 
 const FlowView = () => {
@@ -77,7 +78,7 @@ const FlowView = () => {
     const viewId = useViewId();
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
-    const [dragTime, setDragTime] = useState(0);
+    const [dragInfo, setDragInfo] = useState({now: 0});
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
     const [pointers, setPointers] = useState(0);
 
@@ -99,12 +100,14 @@ const FlowView = () => {
     const publishUndo = usePublish((data) => [model.id, 'undo', data]);
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
+    const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
+
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
         onNodesChange(data.actions);
     });
 
-    useSubscribe(model.id, "textNodeUpdated", (data) => {
+    useSubscribe(model.id, "textNodeUpdated", (_data) => {
         // if (viewId === data.viewId) {return;}
         setNodes([...model.nodes]);
     });
@@ -114,12 +117,12 @@ const FlowView = () => {
         setEdges((_edges) => model.edges);
     });
 
-    useSubscribe(model.id, "nodeAdded", (data) => {
+    useSubscribe(model.id, "nodeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
         setNodes([...model.nodes]);
     });
 
-    useSubscribe(model.id, "pointerMoved", (data) => {
+    useSubscribe(model.id, "pointerMoved", (_data) => {
         setPointers(pointers + 1);
     });
 
@@ -127,8 +130,8 @@ const FlowView = () => {
         const nodeOwnerMap = model.nodeOwnerMap;
         const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id)?.viewId === viewId);
         const now = Date.now();
-        if (now - dragTime < 20) {return;}
-        setDragTime((_old) => now);
+        if (now - dragInfo.now < 20) {return;}
+        setDragInfo((old) => ({...old, now}));
         publishNodesChange({actions: filtered, viewId});
         onNodesChange(filtered);
     };
@@ -146,7 +149,7 @@ const FlowView = () => {
     }, [publishAddEdge, setEdges, viewId]);
 
     const create = useCallback((_evt) => {
-        let color = model.pointerMap.get(viewId)?.color;
+        const color = model.pointerMap.get(viewId)?.color;
         const node = {
                 type: 'output',
                 data: {
@@ -162,8 +165,18 @@ const FlowView = () => {
                 targetPosition: Position.Left,
         };
         publishAddNode({node, viewId});
-    }, [publishAddNode, viewId]);
+    }, [publishAddNode, viewId, model.pointerMap]);
 
+
+    const onNodeDragStart = useCallback((evt, node) => {
+        const now = Date.now();
+        setDragInfo({viewId, node, now});
+    }, [setDragInfo, viewId]);
+    
+    const onNodeDragStop = useCallback((evt, node) => {
+        publishNodeDragStop({id: node.id, viewId});
+    }, [publishNodeDragStop, viewId]);
+ 
     const undo = useCallback((_evt) => {
         publishUndo({viewId});
     }, [publishUndo, viewId]);
@@ -180,8 +193,8 @@ const FlowView = () => {
     }, [viewport]);
 
     const pointerMove = (evt) => {
-        let x = (evt.nativeEvent.clientX - viewport.left - viewport.x) / viewport.zoom;
-        let y = (evt.nativeEvent.clientY - viewport.top - viewport.y) / viewport.zoom;
+        const x = (evt.nativeEvent.clientX - viewport.left - viewport.x) / viewport.zoom;
+        const y = (evt.nativeEvent.clientY - viewport.top - viewport.y) / viewport.zoom;
         publishPointerMove({x, y, viewId});
     }
 
@@ -200,6 +213,10 @@ const FlowView = () => {
                 onNodesChange={myOnNodesChange}
                 onEdgesChange={myOnEdgesChange}
                 onPointerMove={pointerMove}
+
+                onNodeDragStart={onNodeDragStart}
+                onNodeDragStop={onNodeDragStop}
+
                 onConnect={myOnConnect}
                 onInit={onInit}
                 fitView

@@ -68,3 +68,41 @@
   margin-top: 5px;
   font-size: 10px;
 }
+
+.custom-node__todo {
+    width: 300px;
+    height: 20px;
+    display: flex;
+}
+
+.custom-node__todo-header {
+    font-size: 10px;
+}
+
+.custom-node___todo-add-button {
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-left: 8px;
+}
+
+.custom-node__todo-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-node__todo-title {
+    font-size: 10px;
+    height: 18px;
+    margin: 8px;
+    flex-grow: 1;
+}
+
+.custom-node__todo-checked {
+    margin: 8px;
+    height: 18px;
+}
+
+.custom-node__todo-delete {
+    margin: 8px;
+    height: 18px;
+}

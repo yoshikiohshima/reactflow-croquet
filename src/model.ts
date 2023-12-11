@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { addEdge } from 'reactflow';
 import { Model } from "@croquet/react";
 
@@ -31,7 +30,15 @@ import {defaultValues} from "./defaultValues";
 export class FlowModel extends Model {
     nodes: Array<object>;
     edges: Array<object>;
-    nodeOwnerMap: Map<string, object>;
+    nodeOwnerMap: Map<string, {viewId:string, position:object, positionAbsolute:object}>;
+    pointerMap: Map<string, object>;
+    nextEdgeId: number;
+    nextNodeId: number;
+    nextCommandId: number;
+    snapshotCounter: number;
+    undoStacks: Map<string, Array<object>>;
+    redoStacks: Map<string, Array<object>>;
+    eventBuffer: Array<object>;
     init(_options) {
         this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
         this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
@@ -44,20 +51,26 @@ export class FlowModel extends Model {
         this.nextCommandId = 0;
         this.snapshotCounter = 30;
 
-        this.undoStacks = new Map<string, Array>;
-        this.redoStacks = new Map<string, Array>;
+        this.undoStacks = new Map();
+        this.redoStacks = new Map();
         this.eventBuffer = []; // [action|snapshot]; action = {commandId, viewId, event}, snapshot = {nodes, edges}
         
         this.subscribe(this.id, "updateNodes", "updateNodes");
         this.subscribe(this.id, "addEdge", "addEdge");
         this.subscribe(this.id, "addNode", "addNode");
         this.subscribe(this.id, "updateTextNode", "updateTextNode");
+        this.subscribe(this.id, "nodeDragStop", "nodeDragStop");
+
+        this.subscribe(this.id, "addTodo", "addTodo");
+        this.subscribe(this.id, "removeTodo", "removeTodo");
+
         
         this.subscribe(this.id, "pointerMove", "pointerMove");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
 
         this.subscribe(this.id, "undo", "undo");
         this.subscribe(this.id, "redo", "redo");
+        window.flowModel = this;
     }
 
     findNodeIndex(node) {
@@ -74,21 +87,13 @@ export class FlowModel extends Model {
         actions.forEach((action) => {
             const index = this.findNodeIndex(action);
             if (index >= 0)  {
-                // https://reactflow.dev/api-reference/types/node-change
-                // export type NodeChange =
-                // | NodeDimensionChange
-                // | NodePositionChange
-                // | NodeSelectionChange
-                // | NodeRemoveChange
-                // | NodeAddChange
-                // | NodeResetChange;
-                // console.log(action);
                 if (action.type === "dimensions") {
                     this.nodes[index][action.type] = action[action.type];
                 } else if (action.type === "select") {
                     // console.log("select", viewId);
                     
                 } else if (action.type === "position" && action.dragging) {
+                    // it probably should be moved to a handler fo nodeDragStart
                     // console.log("drag", this.nodeOwnerMap.get(action.id), viewId);
                     if (!this.nodeOwnerMap.get(action.id)) {
                         // console.log("set owner", viewId);
@@ -102,33 +107,30 @@ export class FlowModel extends Model {
                     }
                     this.nodes[index][action.type] = action[action.type];
                     this.nodes[index]["positionAbsolute"] = action["positionAbsolute"];
-                } else if (action.type === "position" && !action.dragging) {
-                    // console.log("pointerUp", viewId)
-                    if (this.nodeOwnerMap.get(action.id)?.viewId === viewId) {
-                        const commandId = this.nextCommandId++;
-                        const {position, positionAbsolute} = this.nodeOwnerMap.get(action.id);
-                        const event = {commandId, viewId, command: "moveNode", action: {
-                            oldPosition: position,
-                            id: action.id,
-                            oldPositionAbsolute: positionAbsolute,
-                            position: this.nodes[index].position,
-                            positionAbsolute: this.nodes[index].positionAbsolute
-                        }};
-
-                        let stack = this.undoStacks.get(viewId);
-                        if (!stack) {
-                            stack = [];
-                            this.undoStacks.set(viewId, stack);
-                        }
-                        stack.push(event);
-                        this.eventBuffer.push(event);
-                        console.log(this.eventBuffer, stack);
-                        this.nodeOwnerMap.delete(action.id);
-                    }
                 }
             }
         });
         this.publish(this.id, "nodeUpdated", data);
+    }
+
+    nodeDragStop(data) {
+        const {id, viewId} = data;
+        const index = this.findNodeIndex(data);
+
+        if (this.nodeOwnerMap.get(id)?.viewId !== viewId) {return;}
+        
+        const commandId = this.nextCommandId++;
+        const {position, positionAbsolute} = this.nodeOwnerMap.get(id);
+        const action = {commandId, viewId, command: "moveNode", action: {
+            oldPosition: position,
+            id,
+            oldPositionAbsolute: positionAbsolute,
+            position: this.nodes[index].position,
+            positionAbsolute: this.nodes[index].positionAbsolute
+        }};
+
+        this.storeEventForUndo(viewId, action);
+        this.nodeOwnerMap.delete(id);
     }
 
     updateTextNode(obj) {
@@ -149,13 +151,15 @@ export class FlowModel extends Model {
 
     addEdge(data) {
         // console.log(data);
+        const viewId = data.viewId;
         const edgeAction = data.action;
         if (edgeAction.id === undefined) {
             edgeAction.id = this.newEdgeId();
         }
-
         const commandId = this.nextCommandId++;
         const action = {commandId, viewId, command: "addNode", action: edgeAction};
+
+        this.storeEventForUndo(viewId, action);
         this.processEvent(action);
         this.publish(this.id, "edgeAdded", {action: action.action, viewId: action.viewId});
     }
@@ -169,32 +173,66 @@ export class FlowModel extends Model {
         const commandId = this.nextCommandId++;
         const action = {commandId, viewId, command: "addNode", node};
 
+        this.storeEventForUndo(viewId, action);
+        this.processEvent(action);
+        this.publish(this.id, "nodeAdded", {node: action.node, viewId: action.viewId});
+        // this.maybeTakeUndoSnapshot();
+    }
+
+    addTodo(data) {
+        const viewId = data.viewId;
+        const commandId = this.nextCommandId++;
+        const action = {commandId, viewId, command: "addTodo", action: data};
+
+        this.storeEventForUndo(viewId, action);
+        this.processEvent(action);
+        this.publish(this.id, "nodeAdded");
+        // it may have to be different event but invokes the same logic on the view side for the moment.
+    }
+
+    removeTodo(data) {
+        const viewId = data.viewId;
+        const commandId = this.nextCommandId++;
+        const action = {commandId, viewId, command: "removeTodo", action: data};
+
+        this.storeEventForUndo(viewId, action);
+        this.processEvent(action);
+        this.publish(this.id, "nodeAdded");
+        // like addTodo, the event name should b update nodes
+    }
+
+    storeEventForUndo(viewId, action) {
         let stack = this.undoStacks.get(viewId);
         if (!stack) {
             stack = [];
             this.undoStacks.set(viewId, stack);
         }
-
         stack.push(action);
         this.eventBuffer.push(action);
-
-        this.processEvent(action);
-        this.publish(this.id, "nodeAdded", {node: action.node, viewId: action.viewId});
-        // this.maybeTakeUndoSnapshot();
-        window.flowModel = this;
-    }
+    }        
 
     processEvent(action) {
         // should only modify nodes and edges
         if (action.command === "addNode") {
             this.nodes = [...this.nodes, action.node];
         } else if (action.command === "addEdge") {
-            this.edges = addEdge(data.action, this.edges);
+            this.edges = addEdge(action.action, this.edges);
         } else if (action.command === "moveNode") {
             const index = this.findNodeIndex(action.action);
             this.nodes[index] = {...this.nodes[index],
                                  position: {...action.action.position},
                                  positionAbsolute: {...action.action.positionAbsolute}};
+        } else if (action.command === "addTodo") {
+            this.nodes = [...this.nodes];
+            const index = this.findNodeIndex(action.action);
+            const node = this.nodes[index];
+            node.maxId++;
+            node.data.todos = [...node.data.todos, {id: `t${node.maxId}`, title: "untitled", checked: false}];
+        } else if (action.command === "removeTodo") {
+            this.nodes = [...this.nodes];
+            const index = this.findNodeIndex(action.action);
+            const node = this.nodes[index];
+            node.data.todos = node.data.todos.filter((todo) => todo.id !== action.action.todoId);
         }
     }
 
@@ -267,7 +305,6 @@ export class FlowModel extends Model {
         undoList.push(lastCommand);
         this.publish(this.id, "nodeAdded", {foo:true});
         this.publish(this.id, "edgeAdded", {});
-        window.flowModel = this;
     }
 
     viewExit(viewId) {

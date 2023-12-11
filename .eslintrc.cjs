@@ -20,6 +20,7 @@ module.exports = {
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }
-    ]	
+    ],
+    "no-undef": "error"
   },
 }
