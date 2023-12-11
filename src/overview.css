@@ -85,6 +85,11 @@
     margin-left: 8px;
 }
 
+.custom-node__monaco-editor {
+    height: 200px;
+    width: 200px;
+}
+
 .custom-node__todo-container {
     display: flex;
     flex-direction: column;

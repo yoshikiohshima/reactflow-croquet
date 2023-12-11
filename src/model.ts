@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { addEdge } from 'reactflow';
 import { Model } from "@croquet/react";
 

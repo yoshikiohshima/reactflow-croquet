@@ -1,6 +1,8 @@
 import React, { memo, useState, useCallback } from 'react';
 import { Handle, useReactFlow, useStoreApi, Position } from 'reactflow';
 
+import Editor, { useMonaco, loader } from '@monaco-editor/react';
+
 import {
     usePublish,
     useModelRoot,
@@ -76,6 +78,27 @@ function CustomNodeBody({ id, data }) {
       </div>
     </>
   );
+}
+
+function MonacoEditorBody({id, data}) {
+    const model = useModelRoot();
+    const viewId = useViewId();
+    const [content, setContent] = useState(data.text);
+
+    if (content !== data.text) {
+        setContent(data.text);
+    }
+
+    const publishTextChange = usePublish((data) => [model.id, 'updateTextNode', data]);
+    
+    return (
+        <>
+            <div className="custom-node__header">
+                This is a <strong>Monaco Editor node</strong>
+            </div>
+            <Editor className="custom-node__monaco-editor" value={content}></Editor>
+        </>
+    );
 }
 
 function TextNodeBody({ id, data }) {
@@ -164,3 +187,5 @@ function ToDoListBody({id, data}) {
 export const CustomNode = memo(CustomNodeBody);
 export const TextNode = memo(TextNodeBody);
 export const ToDoListNode = memo(ToDoListBody);
+export const MonacoEditorNode = MonacoEditorBody;
+

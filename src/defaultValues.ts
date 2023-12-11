@@ -66,7 +66,15 @@ export const defaultValues = {
         {
             id: '5',
             type: 'text',
-            position: { x: 200, y: 400 },
+            position: { x: 100, y: 400 },
+            data: {
+                text: "test text"
+            },
+        },
+        {
+            id: '6',
+            type: 'monaco',
+            position: { x: 300, y: 400 },
             data: {
                 text: "test text"
             },

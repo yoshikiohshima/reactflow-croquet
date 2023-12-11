@@ -19,7 +19,7 @@ import {
     useSubscribe,
 } from "@croquet/react";
 
-import {CustomNode, TextNode, ToDoListNode} from './CustomNode';
+import {CustomNode, TextNode, ToDoListNode, MonacoEditorNode} from './CustomNode';
 import {CreateNodeButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
@@ -70,7 +70,8 @@ const Pointers = (props) => {
 const nodeTypes = {
     custom: CustomNode,
     text: TextNode,
-    todo: ToDoListNode
+    todo: ToDoListNode,
+    monaco: MonacoEditorNode,
 };
 
 const FlowView = () => {
