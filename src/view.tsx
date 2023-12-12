@@ -108,9 +108,26 @@ const FlowView = () => {
         onNodesChange(data.actions);
     });
 
-    useSubscribe(model.id, "textNodeUpdated", (_data) => {
-        // if (viewId === data.viewId) {return;}
+    useSubscribe(model.id, "textNodeUpdated", (data) => {
+        if (viewId === data.viewId) {
+	    return;
+        }
         setNodes([...model.nodes]);
+    });
+
+    useSubscribe(model.id, "updateTextNode", (data) => {
+        if (viewId !== data.viewId) {
+            return;
+        }
+
+        setNodes((nodes) => {
+            const newNodes = [...nodes];
+            const index = nodes.findIndex((node) => node.id === data.id);
+            if (index >= 0) {
+                newNodes[index] = {...nodes[index], data: {text: data.data.text}};
+            }
+            return newNodes;
+        });
     });
 
     useSubscribe(model.id, "edgeAdded", (_data) => {

@@ -134,11 +134,12 @@ export class FlowModel extends Model {
         this.nodeOwnerMap.delete(id);
     }
 
-    updateTextNode(obj) {
-        const index = this.findNodeIndex(obj);
+    updateTextNode(data) {
+        const index = this.findNodeIndex(data);
         if (index >= 0) {
-            this.nodes[index] = {...this.nodes[index], data: obj.data};
-            this.publish(this.id, "textNodeUpdated", obj);
+            this.nodes = [...this.nodes];
+            this.nodes[index] = {...this.nodes[index], data: data.data};
+            this.publish(this.id, "textNodeUpdated", data);
         }
     }
 
