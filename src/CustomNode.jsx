@@ -149,23 +149,30 @@ function ToDoListBody({id, data}) {
 
     const publishAddTodo = usePublish((data) => [model.id, 'addTodo', data]);
     const publishRemoveTodo = usePublish((data) => [model.id, 'removeTodo', data]);
+    const publishCheckBoxChanged = usePublish((data) => [model.id, 'checkBoxChanged', data]);
 
     const onChange = (evt) => {console.log(evt);}
 
     const add = (evt) => {
         publishAddTodo({id, viewId});
     };
-        
+
     const remove = (evt) => {
         const removeId = evt.target.parentNode.getAttribute("todoid");
         publishRemoveTodo({id, viewId, todoId: removeId});
+    };
+
+    const onCheckBoxChange = (evt) => {
+      const todoid = evt.target.parentNode.getAttribute("todoid");
+      console.log(evt.target.checked);
+      publishCheckBoxChanged({id, viewId, todoId: todoid, checked: evt.target.checked});
     };
 
     const makeTodoElement = (todo) => {
         return (
             <div key={todo.id} todoid={todo.id} className="custom-node__todo">
                 <textarea className="custom-node__todo-title" value={todo.title} onChange={onChange}></textarea>
-                <input className="custom-node__todo-checked" type="checkbox"/>
+                <input className="custom-node__todo-checked" onChange={onCheckBoxChange} checked={todo.checked} type="checkbox"/>
                 <button className="custom-node__todo-delete" onClick={remove}>Delete</button>
             </div>
         );

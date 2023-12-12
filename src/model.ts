@@ -64,7 +64,7 @@ export class FlowModel extends Model {
 
         this.subscribe(this.id, "addTodo", "addTodo");
         this.subscribe(this.id, "removeTodo", "removeTodo");
-
+        this.subscribe(this.id, "checkBoxChanged", "checkBoxChanged");
         
         this.subscribe(this.id, "pointerMove", "pointerMove");
         this.subscribe(this.sessionId, "view-exit", "viewExit");
@@ -200,7 +200,18 @@ export class FlowModel extends Model {
         this.storeEventForUndo(viewId, action);
         this.processEvent(action);
         this.publish(this.id, "nodeAdded");
-        // like addTodo, the event name should b update nodes
+        // like addTodo, the event name should be update nodes
+    }
+
+    checkBoxChanged(data) {
+        const {todoId, viewId} = data;
+        const commandId = this.nextCommandId++;
+        const action = {commandId, viewId, command: "todoCheckBox", action: data};
+        this.storeEventForUndo(viewId, action);
+        this.processEvent(action);
+        console.log("model", data);
+        this.publish(this.id, "nodeAdded");
+        // like addTodo, the event name should be update nodes
     }
 
     storeEventForUndo(viewId, action) {
@@ -235,6 +246,13 @@ export class FlowModel extends Model {
             const index = this.findNodeIndex(action.action);
             const node = this.nodes[index];
             node.data.todos = node.data.todos.filter((todo) => todo.id !== action.action.todoId);
+        } else if (action.command === "todoCheckBox") {
+            this.nodes = [...this.nodes];
+            const index = this.findNodeIndex(action.action);
+            const node = this.nodes[index];
+            const todoIndex = node.data.todos.findIndex((todo) => todo.id === action.action.todoId);
+            const data = node.data.todos[todoIndex];
+            data.checked = action.action.checked;
         }
     }
 

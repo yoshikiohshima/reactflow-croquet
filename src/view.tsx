@@ -110,7 +110,7 @@ const FlowView = () => {
 
     useSubscribe(model.id, "textNodeUpdated", (data) => {
         if (viewId === data.viewId) {
-	    return;
+            return;
         }
         setNodes([...model.nodes]);
     });
@@ -137,6 +137,7 @@ const FlowView = () => {
 
     useSubscribe(model.id, "nodeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
+        console.log(_data);
         setNodes([...model.nodes]);
     });
 
