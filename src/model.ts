@@ -56,37 +56,36 @@ export class FlowModel extends Model {
         this.redoStacks = new Map();
         this.eventBuffer = []; // [action|snapshot]; action = {commandId, viewId, event}, snapshot = {nodes, edges}
         
-        this.subscribe(this.id, "updateNodes", "updateNodes");
-        this.subscribe(this.id, "addEdge", "addEdge");
-        this.subscribe(this.id, "addNode", "addNode");
-        this.subscribe(this.id, "updateTextNode", "updateTextNode");
-        this.subscribe(this.id, "nodeDragStop", "nodeDragStop");
+        this.subscribe(this.id, "updateNodes", this.updateNodes);
+        this.subscribe(this.id, "addEdge", this.addEdge);
+        this.subscribe(this.id, "addNode", this.addNode);
+        this.subscribe(this.id, "updateTextNode", this.updateTextNode);
 
-        this.subscribe(this.id, "addTodo", "addTodo");
-        this.subscribe(this.id, "removeTodo", "removeTodo");
-        this.subscribe(this.id, "checkBoxChanged", "checkBoxChanged");
+        this.subscribe(this.id, "nodeDragStart", this.nodeDragStart);
+        this.subscribe(this.id, "nodeDrag", this.nodeDrag);
+        this.subscribe(this.id, "nodeDragStop", this.nodeDragStop);
+
+        this.subscribe(this.id, "addTodo", this.addTodo);
+        this.subscribe(this.id, "removeTodo", this.removeTodo);
+        this.subscribe(this.id, "checkBoxChanged", this.checkBoxChanged);
         
-        this.subscribe(this.id, "pointerMove", "pointerMove");
-        this.subscribe(this.sessionId, "view-exit", "viewExit");
+        this.subscribe(this.id, "pointerMove", this.pointerMove);
+        this.subscribe(this.sessionId, "view-exit", this.viewExit);
 
-        this.subscribe(this.id, "undo", "undo");
-        this.subscribe(this.id, "redo", "redo");
+        this.subscribe(this.id, "undo", this.undo);
+        this.subscribe(this.id, "redo", this.redo);
         window.flowModel = this;
     }
 
     findNodeIndex(node) {
-        for (let i = 0; i < this.nodes.length; i++) {
-            if (this.nodes[i].id === node.id) {
-                return i;
-            }
-        }
-        return -1;
+        return this.nodes.findIndex((n) => n.id === node.id);
     }
 
     updateNodes(data) {
         const {actions, viewId} = data;
         actions.forEach((action) => {
-            const index = this.findNodeIndex(action);
+
+                       const index = this.findNodeIndex(action);
             if (index >= 0)  {
                 if (action.type === "dimensions") {
                     this.nodes[index][action.type] = action[action.type];
@@ -94,16 +93,7 @@ export class FlowModel extends Model {
                     // console.log("select", viewId);
                     
                 } else if (action.type === "position" && action.dragging) {
-                    // it probably should be moved to a handler fo nodeDragStart
-                    // console.log("drag", this.nodeOwnerMap.get(action.id), viewId);
-                    if (!this.nodeOwnerMap.get(action.id)) {
-                        // console.log("set owner", viewId);
-                        this.nodeOwnerMap.set(action.id, {
-                            viewId,
-                            position: this.nodes[index][action.type],
-                            positionAbsolute: this.nodes[index]["positionAbsolute"]});
-                        // might be a wrong place to stick this in.
-                    } else if (this.nodeOwnerMap.get(action.id)?.viewId !== viewId) {
+                    if (this.nodeOwnerMap.get(action.id)?.viewId !== viewId) {
                         return;
                     }
                     this.nodes[index][action.type] = action[action.type];
@@ -112,6 +102,23 @@ export class FlowModel extends Model {
             }
         });
         this.publish(this.id, "nodeUpdated", data);
+    }
+
+    nodeDragStart(data) {
+
+        return;
+        const {action, viewId} = data;
+        const index = this.findNodeIndex(action);
+        if (!this.nodeOwnerMap.get(action.id)) {
+            // console.log("set owner", viewId);
+            this.nodeOwnerMap.set(action.id, {
+                viewId,
+                position: this.nodes[index][action.type],
+                positionAbsolute: this.nodes[index]["positionAbsolute"]});
+        }
+    }
+
+    nodeDrag(_data) {
     }
 
     nodeDragStop(data) {
@@ -159,7 +166,7 @@ export class FlowModel extends Model {
             edgeAction.id = this.newEdgeId();
         }
         const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "addNode", action: edgeAction};
+        const action = {commandId, viewId, command: "addEdge", action: edgeAction};
 
         this.storeEventForUndo(viewId, action);
         this.processEvent(action);
@@ -204,7 +211,7 @@ export class FlowModel extends Model {
     }
 
     checkBoxChanged(data) {
-        const {todoId, viewId} = data;
+        const {viewId} = data;
         const commandId = this.nextCommandId++;
         const action = {commandId, viewId, command: "todoCheckBox", action: data};
         this.storeEventForUndo(viewId, action);

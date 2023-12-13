@@ -83,6 +83,8 @@ const FlowView = () => {
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
     const [pointers, setPointers] = useState(0);
 
+    const nodeOwnerMap = model.nodeOwnerMap;
+
     // we are using a bit of a shortcut here to adjust the edge type
     // this could also be done with a custom edge for example
     const edgesWithUpdatedTypes = edges.map((edge) => {
@@ -101,11 +103,12 @@ const FlowView = () => {
     const publishUndo = usePublish((data) => [model.id, 'undo', data]);
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
+    const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
     const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
-        onNodesChange(data.actions);
+        onNodesChange([...model.nodes]);
     });
 
     useSubscribe(model.id, "textNodeUpdated", (data) => {
@@ -130,6 +133,11 @@ const FlowView = () => {
         });
     });
 
+    useSubscribe(model.id, "nodeDragged", (data) => {
+        console.log(data);
+
+    })
+
     useSubscribe(model.id, "edgeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
         setEdges((_edges) => model.edges);
@@ -146,7 +154,6 @@ const FlowView = () => {
     });
 
     const myOnNodesChange = (actions) => {
-        const nodeOwnerMap = model.nodeOwnerMap;
         const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id)?.viewId === viewId);
         const now = Date.now();
         if (now - dragInfo.now < 20) {return;}
@@ -188,9 +195,20 @@ const FlowView = () => {
 
 
     const onNodeDragStart = useCallback((evt, node) => {
+        if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}
         const now = Date.now();
         setDragInfo({viewId, node, now});
-    }, [setDragInfo, viewId]);
+    }, [setDragInfo, viewId, nodeOwnerMap]);
+
+    const onNodeDrag = useCallback((evt, node) => {
+       if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}
+        // const now = Date.now();
+        //if (now - dragInfo.now < 20) {return;}
+        // setDragInfo((old) => ({...old, now}));
+        const action = {id: node.id, position: node.position, positionAbsolute: node.positionAbsolute, viewId};
+        publishNodeDrag({action, viewId});
+        // onNodesChange(filtered);
+    }, [viewId, publishNodeDrag, nodeOwnerMap]);
     
     const onNodeDragStop = useCallback((evt, node) => {
         publishNodeDragStop({id: node.id, viewId});
@@ -234,6 +252,7 @@ const FlowView = () => {
                 onPointerMove={pointerMove}
 
                 onNodeDragStart={onNodeDragStart}
+                onNodeDrag={onNodeDrag}
                 onNodeDragStop={onNodeDragStop}
 
                 onConnect={myOnConnect}
