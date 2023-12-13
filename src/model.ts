@@ -3,6 +3,8 @@ import { Model } from "@croquet/react";
 
 import {defaultValues} from "./defaultValues";
 
+type Action = {actionId: number};
+
 export class FlowModel extends Model {
     nodes: Array<Node>;
     edges: Array<Edge>;
@@ -10,11 +12,11 @@ export class FlowModel extends Model {
     pointerMap: Map<string, {x: number, y: number, color: string}>;
     nextEdgeId: number;
     nextNodeId: number;
-    nextCommandId: number;
-    snapshotCounter: number;
-    undoStacks: Map<string, Array<object>>;
-    redoStacks: Map<string, Array<object>>;
-    eventBuffer: Array<object>;
+    nextActionId: number;
+    snapshot: {edges: Array<Edge>, nodes: Array<Node>, actionId: number};
+    undoStacks: Map<string, Array<Action>>;
+    redoStacks: Map<string, Array<Action>>;
+    eventBuffer: Array<{actionId:number}>;
     undoLimit: number;
     init(_options) {
         this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
@@ -25,14 +27,14 @@ export class FlowModel extends Model {
 
         this.nextEdgeId = 0;
         this.nextNodeId = 0;
-        this.nextCommandId = 0;
+        this.nextActionId = 0;
         this.undoLimit = 100;
 
-        this.snapshot = JSON.parse(JSON.stringify({nodes: this.nodes, edges: this.edges, commandId: this.nextCommandId}));
+        this.snapshot = JSON.parse(JSON.stringify({nodes: this.nodes, edges: this.edges, actionId: this.nextActionId}));
 
         this.undoStacks = new Map();
         this.redoStacks = new Map();
-        this.eventBuffer = []; // [action|snapshot]; action = {commandId, viewId, event}, snapshot = {nodes, edges}
+        this.eventBuffer = []; // [action|snapshot]; action = {actionId, viewId, event}, snapshot = {nodes, edges}
         
         this.subscribe(this.id, "updateNodes", this.updateNodes);
         this.subscribe(this.id, "addEdge", this.addEdge);
@@ -101,9 +103,9 @@ export class FlowModel extends Model {
 
         if (this.nodeOwnerMap.get(id)?.viewId !== viewId) {return;}
         
-        const commandId = this.nextCommandId++;
+        const actionId = this.nextActionId++;
         const {position, positionAbsolute} = this.nodeOwnerMap.get(id);
-        const action = {commandId, viewId, command: "moveNode", action: {
+        const action = {actionId, viewId, command: "moveNode", action: {
             oldPosition: position,
             id,
             oldPositionAbsolute: positionAbsolute,
@@ -139,8 +141,8 @@ export class FlowModel extends Model {
         if (edgeAction.id === undefined) {
             edgeAction.id = this.newEdgeId();
         }
-        const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "addEdge", action: edgeAction};
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "addEdge", action: edgeAction};
 
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
@@ -153,8 +155,8 @@ export class FlowModel extends Model {
         if (node.id === undefined) {
             node.id = this.newNodeId();
         }
-        const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "addNode", node};
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "addNode", node};
 
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
@@ -163,8 +165,8 @@ export class FlowModel extends Model {
 
     addTodo(data) {
         const viewId = data.viewId;
-        const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "addTodo", action: data};
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "addTodo", action: data};
 
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
@@ -174,8 +176,8 @@ export class FlowModel extends Model {
 
     removeTodo(data) {
         const viewId = data.viewId;
-        const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "removeTodo", action: data};
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "removeTodo", action: data};
 
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
@@ -185,8 +187,8 @@ export class FlowModel extends Model {
 
     checkBoxChanged(data) {
         const {viewId} = data;
-        const commandId = this.nextCommandId++;
-        const action = {commandId, viewId, command: "todoCheckBox", action: data};
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "todoCheckBox", action: data};
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
         console.log("model", data);
@@ -212,26 +214,31 @@ export class FlowModel extends Model {
         if (action.command === "addNode") {
             this.nodes = [...this.nodes, action.node];
         } else if (action.command === "addEdge") {
+            // if source or dest node is gone, this I think fails silently
             this.edges = addEdge(action.action, this.edges);
         } else if (action.command === "moveNode") {
             const index = this.findNodeIndex(action.action);
+            if (index < 0) {return;}
             this.nodes[index] = {...this.nodes[index],
                                  position: {...action.action.position},
                                  positionAbsolute: {...action.action.positionAbsolute}};
         } else if (action.command === "addTodo") {
-            this.nodes = [...this.nodes];
             const index = this.findNodeIndex(action.action);
+            if (index < 0) {return;}
+            this.nodes = [...this.nodes];
             const node = this.nodes[index] as Node & {maxId: number};
             node.maxId++;
             node.data.todos = [...node.data.todos, {id: `t${node.maxId}`, title: "untitled", checked: false}];
         } else if (action.command === "removeTodo") {
-            this.nodes = [...this.nodes];
             const index = this.findNodeIndex(action.action);
+            if (index < 0) {return;}
+            this.nodes = [...this.nodes];
             const node = this.nodes[index];
             node.data.todos = node.data.todos.filter((todo) => todo.id !== action.action.todoId);
         } else if (action.command === "todoCheckBox") {
-            this.nodes = [...this.nodes];
             const index = this.findNodeIndex(action.action);
+            if (index < 0) {return;}
+            this.nodes = [...this.nodes];
             const node = this.nodes[index];
             const todoIndex = node.data.todos.findIndex((todo) => todo.id === action.action.todoId);
             const data = node.data.todos[todoIndex];
@@ -256,21 +263,21 @@ export class FlowModel extends Model {
                 this.processAction(this.eventBuffer[i]);
             }
 
-            const targetCommandId = this.eventBuffer[targetIndex].commandId;
+            const targetActionId = this.eventBuffer[targetIndex].actionId;
 
-            this.snapshot = JSON.parse(JSON.stringify({nodes: this.nodes, edges: this.edges, commandId: this.eventBuffer[targetIndex].commandId}));
+            this.snapshot = JSON.parse(JSON.stringify({nodes: this.nodes, edges: this.edges, actionId: this.eventBuffer[targetIndex].actionId}));
 
             for (let i = targetIndex; i < this.eventBuffer.length; i++) {
                 this.processAction(this.eventBuffer[i]);
             }
 
             const newEventBuffer = this.eventBuffer.slice(targetIndex);
-            this.eventBUffer = newEventBuffer;
+            this.eventBuffer = newEventBuffer;
 
             const newUndoStacks = new Map();
             for (const [viewId, stack] of this.undoStacks) {
                 if (stack) {
-                    const newStack = stack.filter((event) => event.commandId > targetCommandId);
+                    const newStack = stack.filter((event) => event.actionId > targetActionId);
                     newUndoStacks.set(viewId, newStack);
                 }
             }
@@ -279,11 +286,11 @@ export class FlowModel extends Model {
             const newRedoStacks = new Map();
             for (const [viewId, stack] of this.redoStacks) {
                 if (stack) {
-                    const newStack = stack.filter((event) => event.commandId > targetCommandId);
+                    const newStack = stack.filter((event) => event.actionId > targetActionId);
                     newRedoStacks.set(viewId, newStack);
                 }
             }
-            this.reStacks = newRedoStacks;
+            this.redoStacks = newRedoStacks;
         }
     }
 
@@ -303,7 +310,7 @@ export class FlowModel extends Model {
 
         const lastCommand = undoList.pop();
         const index = this.eventBuffer.findIndex((c) => {
-            return (c as {commandId:number}).commandId === (lastCommand as {commandId:number}).commandId;
+            return (c as {actionId:number}).actionId === (lastCommand as {actionId:number}).actionId;
         });
 
         this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
@@ -342,7 +349,7 @@ export class FlowModel extends Model {
         this.processAction(lastCommand);
         this.eventBuffer.push(lastCommand);
         undoList.push(lastCommand);
-        this.publish(this.id, "nodeAdded", {foo:true});
+        this.publish(this.id, "nodeAdded", {});
         this.publish(this.id, "edgeAdded", {});
     }
 
