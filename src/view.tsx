@@ -103,12 +103,13 @@ const FlowView = () => {
     const publishUndo = usePublish((data) => [model.id, 'undo', data]);
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
+    const publishNodeDragStart = usePublish((data) => [model.id, "nodeDragStart", data]);
     const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
     const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data) => {
         if (viewId === data.viewId) {return;}
-        onNodesChange([...model.nodes]);
+        onNodesChange(data.actions);
     });
 
     useSubscribe(model.id, "textNodeUpdated", (data) => {
@@ -198,7 +199,8 @@ const FlowView = () => {
         if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}
         const now = Date.now();
         setDragInfo({viewId, node, now});
-    }, [setDragInfo, viewId, nodeOwnerMap]);
+        publishNodeDragStart({action: {id: node.id}, viewId});
+    }, [setDragInfo, viewId, nodeOwnerMap, publishNodeDragStart]);
 
     const onNodeDrag = useCallback((evt, node) => {
        if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}

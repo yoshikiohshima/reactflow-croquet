@@ -1,5 +1,5 @@
-// @ts-nocheck
-import { addEdge } from 'reactflow';
+
+import { addEdge, Node, Edge} from 'reactflow';
 import { Model } from "@croquet/react";
 
 /*
@@ -29,10 +29,10 @@ what does redo mean? -> add the action at the end of sequence
 import {defaultValues} from "./defaultValues";
 
 export class FlowModel extends Model {
-    nodes: Array<object>;
-    edges: Array<object>;
+    nodes: Array<Node>;
+    edges: Array<Edge>;
     nodeOwnerMap: Map<string, {viewId:string, position:object, positionAbsolute:object}>;
-    pointerMap: Map<string, object>;
+    pointerMap: Map<string, {x: number, y: number, color: string}>;
     nextEdgeId: number;
     nextNodeId: number;
     nextCommandId: number;
@@ -74,7 +74,7 @@ export class FlowModel extends Model {
 
         this.subscribe(this.id, "undo", this.undo);
         this.subscribe(this.id, "redo", this.redo);
-        window.flowModel = this;
+        (window as unknown as {flowModel}).flowModel = this;
     }
 
     findNodeIndex(node) {
@@ -85,7 +85,7 @@ export class FlowModel extends Model {
         const {actions, viewId} = data;
         actions.forEach((action) => {
 
-                       const index = this.findNodeIndex(action);
+            const index = this.findNodeIndex(action);
             if (index >= 0)  {
                 if (action.type === "dimensions") {
                     this.nodes[index][action.type] = action[action.type];
@@ -105,15 +105,13 @@ export class FlowModel extends Model {
     }
 
     nodeDragStart(data) {
-
-        return;
         const {action, viewId} = data;
         const index = this.findNodeIndex(action);
         if (!this.nodeOwnerMap.get(action.id)) {
             // console.log("set owner", viewId);
             this.nodeOwnerMap.set(action.id, {
                 viewId,
-                position: this.nodes[index][action.type],
+                position: this.nodes[index]["position"],
                 positionAbsolute: this.nodes[index]["positionAbsolute"]});
         }
     }
@@ -245,7 +243,7 @@ export class FlowModel extends Model {
         } else if (action.command === "addTodo") {
             this.nodes = [...this.nodes];
             const index = this.findNodeIndex(action.action);
-            const node = this.nodes[index];
+            const node = this.nodes[index] as Node & {maxId: number};
             node.maxId++;
             node.data.todos = [...node.data.todos, {id: `t${node.maxId}`, title: "untitled", checked: false}];
         } else if (action.command === "removeTodo") {
@@ -264,6 +262,7 @@ export class FlowModel extends Model {
     }
 
     maybeTakeUndoSnapshot() {
+        /*
         this.snapshotCounter--;
         if (this.snapshotCounter === 0) {
             this.snapshotCounter = 10;
@@ -273,7 +272,7 @@ export class FlowModel extends Model {
             if (this.snapshots.length > 20) {
                 this.snapshots = this.snapshots.slice(0, -20);
             }
-        }
+        }*/
     }
 
     undo(data) {
@@ -291,7 +290,9 @@ export class FlowModel extends Model {
         }
 
         const lastCommand = undoList.pop();
-        const index = this.eventBuffer.findIndex((c) => c.commandId === lastCommand.commandId);
+        const index = this.eventBuffer.findIndex((c) => {
+            return (c as {commandId:number}).commandId === (lastCommand as {commandId:number}).commandId;
+        });
 
         this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
         this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
@@ -309,7 +310,6 @@ export class FlowModel extends Model {
 
         this.publish(this.id, "nodeAdded", {});
         this.publish(this.id, "edgeAdded", {});
-        window.flowModel = this;
     }
 
     redo(data) {
@@ -350,7 +350,7 @@ export class FlowModel extends Model {
     pointerMove(data) {
         const {x, y, viewId} = data;
         if (!this.pointerMap.get(viewId)) {
-            this.pointerMap.set(viewId, {color: this.randomColor()});
+            this.pointerMap.set(viewId, {color: this.randomColor(), x: 0, y: 0});
         }
         this.pointerMap.get(viewId).x = x;
         this.pointerMap.get(viewId).y = y;
