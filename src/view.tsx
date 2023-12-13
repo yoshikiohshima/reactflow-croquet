@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
@@ -79,7 +78,7 @@ const FlowView = () => {
     const viewId = useViewId();
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
-    const [dragInfo, setDragInfo] = useState({now: 0});
+    const [dragInfo, setDragInfo] = useState({now: 0, viewId: undefined, node: null});
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
     const [pointers, setPointers] = useState(0);
 
@@ -107,19 +106,19 @@ const FlowView = () => {
     const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
     const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
 
-    useSubscribe(model.id, "nodeUpdated", (data) => {
+    useSubscribe(model.id, "nodeUpdated", (data:any) => {
         if (viewId === data.viewId) {return;}
         onNodesChange(data.actions);
     });
 
-    useSubscribe(model.id, "textNodeUpdated", (data) => {
+    useSubscribe(model.id, "textNodeUpdated", (data:any) => {
         if (viewId === data.viewId) {
             return;
         }
         setNodes([...model.nodes]);
     });
 
-    useSubscribe(model.id, "updateTextNode", (data) => {
+    useSubscribe(model.id, "updateTextNode", (data:any) => {
         if (viewId !== data.viewId) {
             return;
         }
@@ -196,14 +195,14 @@ const FlowView = () => {
 
 
     const onNodeDragStart = useCallback((evt, node) => {
-        if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}
+        if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id).viewId !== viewId) {return;}
         const now = Date.now();
         setDragInfo({viewId, node, now});
         publishNodeDragStart({action: {id: node.id}, viewId});
     }, [setDragInfo, viewId, nodeOwnerMap, publishNodeDragStart]);
 
     const onNodeDrag = useCallback((evt, node) => {
-       if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id) !== viewId) {return;}
+       if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id).viewId !== viewId) {return;}
         // const now = Date.now();
         //if (now - dragInfo.now < 20) {return;}
         // setDragInfo((old) => ({...old, now}));
@@ -265,8 +264,7 @@ const FlowView = () => {
                 <MiniMap style={minimapStyle} zoomable pannable />
                 <Controls />
             
-            <Background color="#aaa" gap={16}>
-            </Background>
+            <Background color="#aaa" gap={16}/>
             </ReactFlow>
             </div>
             <ViewportDisplay callback={viewportCallback}/>

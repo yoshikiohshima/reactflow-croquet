@@ -1,7 +1,7 @@
 import React, { memo, useState, useCallback } from 'react';
 import { Handle, useReactFlow, useStoreApi, Position } from 'reactflow';
 
-import Editor, { useMonaco, loader } from '@monaco-editor/react';
+import Editor, { } from '@monaco-editor/react';
 
 import {
     usePublish,
@@ -33,21 +33,20 @@ function Select({ value, handleId, nodeId }) {
   const store = useStoreApi();
   const onChange = (evt) => {
       const { nodeInternals } = store.getState();
-    setNodes(
-        Array.from(nodeInternals.values()).map((node) => {
-        if (node.id === nodeId) {
-          node.data = {
-            ...node.data,
-            selects: {
-              ...node.data.selects,
-              [handleId]: evt.target.value,
-            },
-          };
-        }
-
-        return node;
-      })
-    );
+      setNodes(
+          Array.from(nodeInternals.values()).map((node) => {
+              if (node.id === nodeId) {
+                  node.data = {
+                      ...node.data,
+                      selects: {
+                          ...node.data.selects,
+                          [handleId]: evt.target.value,
+                      },
+                  };
+              }
+              return node;
+          })
+      );
   };
 
   return (
@@ -80,16 +79,16 @@ function CustomNodeBody({ id, data }) {
   );
 }
 
-function MonacoEditorBody({id, data}) {
-    const model = useModelRoot();
-    const viewId = useViewId();
+function MonacoEditorBody({id:_id, data}) {
+    const _model = useModelRoot();
+    const _viewId = useViewId();
     const [content, setContent] = useState(data.text);
 
     if (content !== data.text) {
         setContent(data.text);
     }
 
-    const publishTextChange = usePublish((data) => [model.id, 'updateTextNode', data]);
+    // const publishTextChange = usePublish((data) => [model.id, 'updateTextNode', data]);
     
     return (
         <>
@@ -115,7 +114,7 @@ function TextNodeBody({ id, data }) {
     const onChange = useCallback((e) => {
         publishTextChange({id, viewId, data: {text: e.target.value}});
         setContent(e.target.value);
-    }, [publishTextChange]);
+    }, [publishTextChange, id, viewId]);
 
     return (
         <>
@@ -153,7 +152,7 @@ function ToDoListBody({id, data}) {
 
     const onChange = (evt) => {console.log(evt);}
 
-    const add = (evt) => {
+    const add = (_evt) => {
         publishAddTodo({id, viewId});
     };
 
@@ -169,8 +168,9 @@ function ToDoListBody({id, data}) {
     };
 
     const makeTodoElement = (todo) => {
+      const workaround = {todoid: todo.id};
         return (
-            <div key={todo.id} todoid={todo.id} className="custom-node__todo">
+            <div key={todo.id} {...workaround} className="custom-node__todo">
                 <textarea className="custom-node__todo-title" value={todo.title} onChange={onChange}></textarea>
                 <input className="custom-node__todo-checked" onChange={onCheckBoxChange} checked={todo.checked} type="checkbox"/>
                 <button className="custom-node__todo-delete" onClick={remove}>Delete</button>
