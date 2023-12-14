@@ -73,6 +73,7 @@
     width: 300px;
     height: 20px;
     display: flex;
+    padding: 4px;
 }
 
 .custom-node__todo-header {
@@ -96,18 +97,15 @@
 }
 
 .custom-node__todo-title {
-    font-size: 10px;
+    font-size: 12px;
     height: 18px;
-    margin: 8px;
     flex-grow: 1;
 }
 
 .custom-node__todo-checked {
-    margin: 8px;
     height: 18px;
 }
 
 .custom-node__todo-delete {
-    margin: 8px;
     height: 18px;
 }

@@ -118,18 +118,37 @@ const FlowView = () => {
         setNodes([...model.nodes]);
     });
 
-    useSubscribe(model.id, "updateTextNode", (data:any) => {
-        if (viewId !== data.viewId) {
-            return;
-        }
+    useSubscribe(model.id, "updateText", (data:any) => {
+        const {path, viewId, text} = data;
 
+        if (viewId !== data.viewId) {return;}
+
+        const pathArray = path.split(".");
         setNodes((nodes) => {
-            const newNodes = [...nodes];
-            const index = nodes.findIndex((node) => node.id === data.id);
-            if (index >= 0) {
-                newNodes[index] = {...nodes[index], data: {text: data.data.text}};
+            if (pathArray.length === 1) {
+                // a vanilla text node
+                const index = nodes.findIndex((node) => node.id === path);
+                if (index >= 0) {
+                    const newNodes = [...nodes];
+                    newNodes[index] = {...nodes[index], data: {text}};
+                    return newNodes;
+                }
+            } else if (pathArray[0] === "todos") {
+                // a todo list
+                const index = nodes.findIndex((node) => node.id === pathArray[1]);
+                if (index >= 0) {
+                    const newNodes = [...nodes];
+                    const node = newNodes[index];
+                    const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
+                    node.data.todos = [...node.data.todos];
+                    const todo = node.data.todos[todoIndex];
+
+                    todo.title = text;
+                    node.data.todos[todoIndex] = todo;
+                    return newNodes;
+                }
             }
-            return newNodes;
+            return nodes;
         });
     });
 

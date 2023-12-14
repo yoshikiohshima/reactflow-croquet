@@ -39,7 +39,8 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "updateNodes", this.updateNodes);
         this.subscribe(this.id, "addEdge", this.addEdge);
         this.subscribe(this.id, "addNode", this.addNode);
-        this.subscribe(this.id, "updateTextNode", this.updateTextNode);
+        this.subscribe(this.id, "updateText", this.updateText);
+        // this.subscribe(this.id, "updateTextNode", this.updateTextNode);
 
         this.subscribe(this.id, "nodeDragStart", this.nodeDragStart);
         this.subscribe(this.id, "nodeDrag", this.nodeDrag);
@@ -117,13 +118,16 @@ export class FlowModel extends Model {
         this.nodeOwnerMap.delete(id);
     }
 
-    updateTextNode(data) {
-        const index = this.findNodeIndex(data);
-        if (index >= 0) {
-            this.nodes = [...this.nodes];
-            this.nodes[index] = {...this.nodes[index], data: data.data};
-            this.publish(this.id, "textNodeUpdated", data);
-        }
+    updateText(data) {
+        const {viewId} = data;
+
+        const actionId = this.nextActionId++;
+        const action = {actionId, viewId, command: "updateText", action: data};
+
+        this.storeActionForUndo(viewId, action);
+        this.processAction(action);
+
+        this.publish(this.id, "textNodeUpdated", data);
     }
 
     newEdgeId() {
@@ -243,6 +247,31 @@ export class FlowModel extends Model {
             const todoIndex = node.data.todos.findIndex((todo) => todo.id === action.action.todoId);
             const data = node.data.todos[todoIndex];
             data.checked = action.action.checked;
+        } else if (action.command === "updateText") {
+            const {path, text} = action.action;
+            const pathArray = path.split(".");
+
+            if (pathArray.length === 1) {
+                // a vanilla text node
+                const index = this.findNodeIndex({id: path});
+                if (index >= 0) {
+                    this.nodes = [...this.nodes];
+                    this.nodes[index] = {...this.nodes[index], data: {text}};
+                }
+            } else if (pathArray[0] === "todos") {
+                // todo list
+                const index = this.findNodeIndex({id: pathArray[1]});
+                if (index >= 0) {
+                    this.nodes = [...this.nodes];
+                    const node = this.nodes[index];
+                    const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
+
+                    node.data.todos = [...node.data.todos];
+                    const todo = {...node.data.todos[todoIndex]};
+                    todo.title = text;
+                    node.data.todos[todoIndex] = todo;
+                }
+            }
         }
     }
 

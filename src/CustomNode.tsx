@@ -100,28 +100,34 @@ function MonacoEditorBody({id:_id, data}) {
     );
 }
 
-function TextNodeBody({ id, data }) {
+function Text({ path, text, className}) {
     const model = useModelRoot();
     const viewId = useViewId();
-    const [content, setContent] = useState(data.text);
+    const [content, setContent] = useState(text);
 
-    if (content !== data.text) {
-        setContent(data.text);
+    if (content !== text) {
+        setContent(text);
     }
 
-    const publishTextChange = usePublish((data) => [model.id, 'updateTextNode', data]);
+    const publishTextChange = usePublish((data) => [model.id, 'updateText', data]);
     
     const onChange = useCallback((e) => {
-        publishTextChange({id, viewId, data: {text: e.target.value}});
+        publishTextChange({path, viewId, text: e.target.value});
         setContent(e.target.value);
-    }, [publishTextChange, id, viewId]);
+    }, [publishTextChange, path, viewId]);
 
+    return (
+        <textarea className={className} value={content} onChange={onChange}></textarea>
+    );
+}
+
+function TextNodeBody({ id, data }) {
     return (
         <>
             <div className="custom-node__header">
                 This is an <strong>ediable text node</strong>
             </div>
-            <textarea className="custom-node__body" value={content} onChange={onChange}></textarea>
+            <Text path={id} text={data.text} className={"custom-node__body"}/>
         </>
     );
 }
@@ -150,8 +156,6 @@ function ToDoListBody({id, data}) {
     const publishRemoveTodo = usePublish((data) => [model.id, 'removeTodo', data]);
     const publishCheckBoxChanged = usePublish((data) => [model.id, 'checkBoxChanged', data]);
 
-    const onChange = (evt) => {console.log(evt);}
-
     const add = (_evt) => {
         publishAddTodo({id, viewId});
     };
@@ -163,15 +167,15 @@ function ToDoListBody({id, data}) {
 
     const onCheckBoxChange = (evt) => {
       const todoid = evt.target.parentNode.getAttribute("todoid");
-      console.log(evt.target.checked);
       publishCheckBoxChanged({id, viewId, todoId: todoid, checked: evt.target.checked});
     };
 
     const makeTodoElement = (todo) => {
+      console.log(todo);
       const workaround = {todoid: todo.id};
         return (
             <div key={todo.id} {...workaround} className="custom-node__todo">
-                <textarea className="custom-node__todo-title" value={todo.title} onChange={onChange}></textarea>
+                <Text path={`todos.${id}.${todo.id}`} text={todo.title} className={"custom-node__todo-title"}/>
                 <input className="custom-node__todo-checked" onChange={onCheckBoxChange} checked={todo.checked} type="checkbox"/>
                 <button className="custom-node__todo-delete" onClick={remove}>Delete</button>
             </div>
