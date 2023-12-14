@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, useReactFlow, useStoreApi, Position } from 'reactflow';
 
 import Editor, { } from '@monaco-editor/react';
@@ -105,19 +105,31 @@ function Text({ path, text, className}) {
     const viewId = useViewId();
     const [content, setContent] = useState(text);
 
+    const inputRef = useRef(null);
+    const [cursor, setCursor] = useState(undefined);
+
     if (content !== text) {
         setContent(text);
     }
 
     const publishTextChange = usePublish((data) => [model.id, 'updateText', data]);
+
+    useEffect(() => {
+        if (inputRef.current && cursor !== undefined) {
+	    // it should check the viewId of last change, or such
+	    inputRef.current.setSelectionRange(cursor, cursor);
+	}
+	
+    }, [inputRef, cursor, content]);
     
     const onChange = useCallback((e) => {
+        setCursor(e.target.selectionStart);
         publishTextChange({path, viewId, text: e.target.value});
         setContent(e.target.value);
     }, [publishTextChange, path, viewId]);
 
     return (
-        <textarea className={className} value={content} onChange={onChange}></textarea>
+        <textarea ref={inputRef} className={className} value={content} onChange={onChange}></textarea>
     );
 }
 
@@ -171,7 +183,6 @@ function ToDoListBody({id, data}) {
     };
 
     const makeTodoElement = (todo) => {
-      console.log(todo);
       const workaround = {todoid: todo.id};
         return (
             <div key={todo.id} {...workaround} className="custom-node__todo">
