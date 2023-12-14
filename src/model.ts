@@ -265,7 +265,7 @@ export class FlowModel extends Model {
                     this.nodes = [...this.nodes];
                     const node = this.nodes[index];
                     const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
-
+                    node.data = {...node.data};
                     node.data.todos = [...node.data.todos];
                     const todo = {...node.data.todos[todoIndex]};
                     todo.title = text;
