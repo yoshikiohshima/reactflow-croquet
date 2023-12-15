@@ -116,10 +116,9 @@ function Text({ path, text, className}) {
 
     useEffect(() => {
         if (inputRef.current && cursor !== undefined) {
-	    // it should check the viewId of last change, or such
-	    inputRef.current.setSelectionRange(cursor, cursor);
-	}
-	
+            // it should check the viewId of last change, or such
+            inputRef.current.setSelectionRange(cursor, cursor);
+        }
     }, [inputRef, cursor, content]);
     
     const onChange = useCallback((e) => {
@@ -185,18 +184,18 @@ function ToDoListBody({id, data}) {
     const makeTodoElement = (todo) => {
       const workaround = {todoid: todo.id};
         return (
-            <div key={todo.id} {...workaround} className="custom-node__todo">
-                <Text path={`todos.${id}.${todo.id}`} text={todo.title} className={"custom-node__todo-title"}/>
-                <input className="custom-node__todo-checked" onChange={onCheckBoxChange} checked={todo.checked} type="checkbox"/>
-                <button className="custom-node__todo-delete" onClick={remove}>Delete</button>
+            <div key={todo.id} {...workaround} className="custom-node__todo nodrag">
+                <Text path={`todos.${id}.${todo.id}`} text={todo.title} className={"custom-node__todo-title nodrag"}/>
+                <input className="custom-node__todo-checked nodrag" onChange={onCheckBoxChange} checked={todo.checked} type="checkbox"/>
+                <button className="custom-node__todo-delete nodrag" onClick={remove}>Delete</button>
             </div>
         );
     };
 
     return (
         <>
-            <div className="custom-node__todo-header ">
-                This is a <strong>ToDo List</strong><button className="custom-node___todo-add-button" onClick={add}>Add</button>
+            <div className="custom-node__todo-header">
+                This is a <strong>ToDo List</strong><button className="custom-node___todo-add-button nodrag" onClick={add}>Add</button>
 
             </div>
             <div className="custom-node___todo-container">

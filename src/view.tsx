@@ -155,7 +155,6 @@ const FlowView = () => {
 
     useSubscribe(model.id, "nodeDragged", (data) => {
         console.log(data);
-
     })
 
     useSubscribe(model.id, "edgeAdded", (_data) => {
@@ -165,7 +164,6 @@ const FlowView = () => {
 
     useSubscribe(model.id, "nodeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
-        console.log(_data);
         setNodes([...model.nodes]);
     });
 
@@ -215,23 +213,17 @@ const FlowView = () => {
 
 
     const onNodeDragStart = useCallback((evt, node) => {
+    console.log("dragStart");
         if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id).viewId !== viewId) {return;}
         const now = Date.now();
         setDragInfo({viewId, node, now});
         publishNodeDragStart({action: {id: node.id}, viewId});
     }, [setDragInfo, viewId, nodeOwnerMap, publishNodeDragStart]);
 
-    const onNodeDrag = useCallback((evt, node) => {
-       if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id).viewId !== viewId) {return;}
-        // const now = Date.now();
-        //if (now - dragInfo.now < 20) {return;}
-        // setDragInfo((old) => ({...old, now}));
-        const action = {id: node.id, position: node.position, positionAbsolute: node.positionAbsolute, viewId};
-        publishNodeDrag({action, viewId});
-        // onNodesChange(filtered);
-    }, [viewId, publishNodeDrag, nodeOwnerMap]);
-    
+    const onNodeDrag = () => {};
+
     const onNodeDragStop = useCallback((evt, node) => {
+    console.log("dragStop");
         publishNodeDragStop({id: node.id, viewId});
     }, [publishNodeDragStop, viewId]);
  
