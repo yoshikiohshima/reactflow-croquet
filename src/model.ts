@@ -31,7 +31,7 @@ export class FlowModel extends Model {
     persistPeriod: number;
     persistRequested: boolean;
 
-    init(options, persistentData) {
+    init(options, persistentData?) {
         let persistentDataLoaded = false;
         if (persistentData) {
             persistentDataLoaded = this.loadPersistentData(persistentData);
@@ -503,7 +503,7 @@ export class FlowModel extends Model {
 
     ensurePersistenceProps() {
         if (!this.persistPeriod) {
-            let period = 1 * 60 * 1000;
+            const period = 1 * 60 * 1000;
             this.persistPeriod = period;
         }
         if (this.lastPersistTime === undefined) {
@@ -545,7 +545,6 @@ export class FlowModel extends Model {
         if (this.loadingPersistentDataErrored) {return;}
         // console.log("persist data");
         this.lastPersistTime = this.now();
-        const top = this;
         const func = () => {
             const snapshot = this.makeSnapshot({
                 nodes: this.nodes,
@@ -557,7 +556,7 @@ export class FlowModel extends Model {
             snapshot.nextTodoIds = [...snapshot.nextTodoIds];
             return {name, version: 1, data: snapshot};
         };
-        top.persistSession(func);
+        this.persistSession(func);
     }
 
     triggerPersist() {
