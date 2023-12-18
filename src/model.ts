@@ -17,32 +17,54 @@ export class FlowModel extends Model {
     snapshot: {nodes: Array<Node>,
                edges: Array<Edge>,
                nextActionId: number,
+               nextNodeId: number,
+               nextEdgeId: number,
                nextTodoIds: Map<string, number>};
     undoStacks: Map<string, Array<Action>>;
     redoStacks: Map<string, Array<Action>>;
     eventBuffer: Array<{actionId:number}>;
     undoLimit: number;
-    init(options) {
-        console.log("init options", options);
-        this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
-        this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
-        this.nextTodoIds = new Map();
 
-        this.initializeTodoIds();
+    loadingPersistentData: boolean;
+    loadingPersistentDataErrored: boolean;
+    lastPersistTime: number;
+    persistPeriod: number;
+    persistRequested: boolean;
+
+    init(options, persistentData) {
+        let persistentDataLoaded = false;
+        if (persistentData) {
+            persistentDataLoaded = this.loadPersistentData(persistentData);
+        }
+        if (!persistentDataLoaded) {
+            this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
+            this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
+            this.nextTodoIds = new Map();
+            this.nextEdgeId = 0;
+            this.nextNodeId = 0;
+            this.nextActionId = 0;
+            this.initializeTodoIds();
+        }
 
         this.nodeOwnerMap = new Map();
         this.pointerMap = new Map(); // {viewId -> {x, y color}}
 
-        this.nextEdgeId = 0;
-        this.nextNodeId = 0;
-        this.nextActionId = 0;
-        this.undoLimit = 2;
+        this.undoLimit = 20;
+        this.persistPeriod = 30 * 1000;
 
-        this.snapshot = this.makeSnapshot(this.nodes, this.edges, this.nextActionId, this.nextTodoIds);
+        this.snapshot = this.makeSnapshot({
+            nodes: this.nodes,
+            edges: this.edges,
+            nextActionId: this.nextActionId,
+            nextNodeId: this.nextNodeId,
+            nextEdgeId: this.nextEdgeId,
+            nextTodoIds: this.nextTodoIds});
 
         this.undoStacks = new Map();
         this.redoStacks = new Map();
         this.eventBuffer = []; // [action|snapshot]; action = {actionId, viewId, event}, snapshot = {nodes, edges}
+
+        this.ensurePersistenceProps();
         
         this.subscribe(this.id, "updateNodes", this.updateNodes);
         this.subscribe(this.id, "addEdge", this.addEdge);
@@ -63,6 +85,8 @@ export class FlowModel extends Model {
 
         this.subscribe(this.id, "undo", this.undo);
         this.subscribe(this.id, "redo", this.redo);
+
+        // this.subscribe(this.sessionId, "triggerPersist", "triggerPersist");
     }
 
     initializeTodoIds() {
@@ -129,6 +153,7 @@ export class FlowModel extends Model {
         this.nodeOwnerMap.delete(id);
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
+        this.triggerPersist();
     }
 
     updateText(data) {
@@ -300,8 +325,9 @@ export class FlowModel extends Model {
         }
     }
 
-    makeSnapshot(nodes, edges, nextActionId, nextTodoIds) {
-        const snapshot = JSON.parse(JSON.stringify({nodes, edges, nextActionId}));
+    makeSnapshot(data) {
+        const {nodes, edges, nextActionId, nextNodeId, nextEdgeId, nextTodoIds} = data;
+        const snapshot = JSON.parse(JSON.stringify({nodes, edges, nextActionId, nextNodeId, nextEdgeId}));
         snapshot.nextTodoIds = new Map([...nextTodoIds]);
         return snapshot;
     }
@@ -314,8 +340,6 @@ export class FlowModel extends Model {
         // eventBuffer would be truncated.
         // the undoStacks are also truncated.
 
-        console.log("eventbuffer length:", this.eventBuffer.length);
-
         if (this.eventBuffer.length > this.undoLimit * 1.5) {
             const targetIndex = this.eventBuffer.length - this.undoLimit;
             this.edges = this.snapshot.edges;
@@ -327,7 +351,13 @@ export class FlowModel extends Model {
 
             const targetActionId = this.eventBuffer[targetIndex].actionId;
 
-            this.snapshot = this.makeSnapshot(this.nodes, this.edges, this.nextActionId, this.nextTodoIds);
+            this.snapshot = this.makeSnapshot({
+                nodes: this.nodes,
+                edges: this.edges,
+                nextActionId: this.nextActionId,
+                nextNodeId: this.nextNodeId,
+                nextEdgeId: this.nextEdgeId,
+                nextTodoIds: this.nextTodoIds});
 
             for (let i = targetIndex; i < this.eventBuffer.length - 1; i++) {
                 // -1 above, because storeActionForUndo is always followed by processAction call
@@ -469,6 +499,84 @@ export class FlowModel extends Model {
             case 5: r = v, g = p, b = q; break;
         }
         return `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b * 255).toString(16).padStart(2, "0")}`;
+    }
+
+    ensurePersistenceProps() {
+        if (!this.persistPeriod) {
+            let period = 1 * 60 * 1000;
+            this.persistPeriod = period;
+        }
+        if (this.lastPersistTime === undefined) {
+            this.lastPersistTime = 0;
+        }
+
+        if (this.persistRequested === undefined) {
+            this.persistRequested = false;
+        }
+    }
+
+    loadPersistentData({ _name, version, data }) {
+        let success = false;
+        try {
+            delete this.loadingPersistentDataErrored;
+            this.loadingPersistentData = true;
+            success = this.load(data, version);
+        } catch (error) {
+            console.error("error in loading persistent data", error);
+            this.loadingPersistentDataErrored = true;
+            success = false;
+        } finally {
+            delete this.loadingPersistentData;
+        }
+        return success;
+    }
+
+    load(data, _version) {
+        if (!data) {return false;}
+        this.nodes = data.nodes;
+        this.edges = data.edges;
+        this.nextActionId = data.nextActionId;
+        this.nextTodoIds = new Map(data.nextTodoIds);
+        return true;
+    }
+
+    savePersistentData() {
+        if (this.loadingPersistentData) {return;}
+        if (this.loadingPersistentDataErrored) {return;}
+        // console.log("persist data");
+        this.lastPersistTime = this.now();
+        const top = this;
+        const func = () => {
+            const snapshot = this.makeSnapshot({
+                nodes: this.nodes,
+                edges: this.edges,
+                nextActionId: this.nextActionId,
+                nextNodeId: this.nextNodeId,
+                nextEdgeId: this.nextEdgeId,
+                nextTodoIds: this.nextTodoIds});
+            snapshot.nextTodoIds = [...snapshot.nextTodoIds];
+            return {name, version: 1, data: snapshot};
+        };
+        top.persistSession(func);
+    }
+
+    triggerPersist() {
+        const now = this.now();
+        const diff = now - this.lastPersistTime;
+        const period = this.persistPeriod;
+        // console.log("persist triggered", diff, period);
+        if (diff < period) {
+            if (!this.persistRequested) {
+                // console.log("persist scheduled");
+                this.persistRequested =  true;
+                this.future(period - diff).triggerPersist();
+            }
+            // console.log("persist not ready");
+            return;
+        }
+        this.lastPersistTime = now;
+        this.persistRequested = false;
+        this.savePersistentData();
     }
 }
 
