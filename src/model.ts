@@ -122,6 +122,7 @@ export class FlowModel extends Model {
     nodeDragStart(data) {
         const {action, viewId} = data;
         const index = this.findNodeIndex(action.id);
+        if (index < 0) {return;}
         if (!this.nodeOwnerMap.get(action.id)) {
             // console.log("set owner", viewId);
             this.nodeOwnerMap.set(action.id, {
@@ -136,7 +137,12 @@ export class FlowModel extends Model {
 
     nodeDragStop(data) {
         const {id, viewId} = data;
-        const index = this.findNodeIndex(data.id);
+        const index = this.findNodeIndex(id);
+
+        if (index < 0) {
+            this.nodeOwnerMap.delete(id);
+            return;
+        }
 
         if (this.nodeOwnerMap.get(id)?.viewId !== viewId) {return;}
         
@@ -313,8 +319,9 @@ export class FlowModel extends Model {
                 const index = this.findNodeIndex(pathArray[1]);
                 if (index >= 0) {
                     this.nodes = [...this.nodes];
-                    const node = this.nodes[index];
                     const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
+                    if (todoIndex < 0) {return;}
+                    const node = this.nodes[index];
                     node.data = {...node.data};
                     node.data.todos = [...node.data.todos];
                     const todo = {...node.data.todos[todoIndex]};
@@ -405,9 +412,11 @@ export class FlowModel extends Model {
         const lastCommand = undoList.pop();
         console.log("undo action", lastCommand);
         
-        const index = this.eventBuffer.findIndex((c) => {
+        let index = this.eventBuffer.findIndex((c) => {
             return (c as {actionId:number}).actionId === (lastCommand as {actionId:number}).actionId;
         });
+
+        if (index < 0) {return}
 
         this.nodes = JSON.parse(JSON.stringify(this.snapshot.nodes));
         this.edges = JSON.parse(JSON.stringify(this.snapshot.edges));
