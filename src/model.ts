@@ -318,9 +318,9 @@ export class FlowModel extends Model {
                 // todo list
                 const index = this.findNodeIndex(pathArray[1]);
                 if (index >= 0) {
-                    this.nodes = [...this.nodes];
-                    const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
+                    const todoIndex = this.nodes[index].data.todos.findIndex((todo) => todo.id === pathArray[2]);
                     if (todoIndex < 0) {return;}
+                    this.nodes = [...this.nodes];
                     const node = this.nodes[index];
                     node.data = {...node.data};
                     node.data.todos = [...node.data.todos];
