@@ -430,7 +430,7 @@ export class FlowModel extends Model {
         const lastCommand = undoList.pop();
         console.log("undo action", lastCommand);
         
-        let index = this.eventBuffer.findIndex((c) => {
+        const index = this.eventBuffer.findIndex((c) => {
             return (c as {actionId:number}).actionId === (lastCommand as {actionId:number}).actionId;
         });
 
