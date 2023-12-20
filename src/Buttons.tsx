@@ -4,6 +4,12 @@ export function CreateNodeButton(props) {
     );
 }
 
+export function DeleteNodeButton(props) {
+    return (
+        <button onClick={props.onClick} style={{width: 80, height: 80}}>Delete</button>
+    );
+}
+
 export function UndoButton(props) {
     return (
         <button onClick={props.onClick} style={{width: 80, height: 80}}>Undo</button>
@@ -15,5 +21,3 @@ export function RedoButton(props) {
         <button onClick={props.onClick} style={{width: 80, height: 80}}>Redo</button>
     );
 }
-
-

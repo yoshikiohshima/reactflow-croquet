@@ -19,7 +19,7 @@ import {
 } from "@croquet/react";
 
 import {CustomNode, TextNode, ToDoListNode, MonacoEditorNode} from './CustomNode';
-import {CreateNodeButton, UndoButton, RedoButton} from './Buttons';
+import {CreateNodeButton, DeleteNodeButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
 import './overview.css';
@@ -78,6 +78,10 @@ const FlowView = () => {
     const viewId = useViewId();
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
+
+    const [selectedNodes, setSelectedNodes] = useState([]);
+    const [selectedEdges, setSelectedEdges] = useState([]);
+
     const [dragInfo, setDragInfo] = useState({now: 0, viewId: undefined, node: null});
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
     const [pointers, setPointers] = useState(0);
@@ -98,12 +102,13 @@ const FlowView = () => {
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
     const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
     const publishAddNode = usePublish((data) => [model.id, 'addNode', data]);
+    const publishDeleteNodes = usePublish((data) => [model.id, 'deleteNodes', data]);
     const publishPointerMove = usePublish((data) => [model.id, 'pointerMove', data]);
     const publishUndo = usePublish((data) => [model.id, 'undo', data]);
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
 
     const publishNodeDragStart = usePublish((data) => [model.id, "nodeDragStart", data]);
-    const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
+    // const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
     const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data:any) => {
@@ -192,7 +197,7 @@ const FlowView = () => {
         setEdges((eds) => addEdge(params, eds));
     }, [publishAddEdge, setEdges, viewId]);
 
-    const create = useCallback((_evt) => {
+    const createNode = useCallback((_evt) => {
         const color = model.pointerMap.get(viewId)?.color;
         const node = {
                 type: 'output',
@@ -211,6 +216,10 @@ const FlowView = () => {
         publishAddNode({node, viewId});
     }, [publishAddNode, viewId, model.pointerMap]);
 
+    const deleteNodes = useCallback((_evt) => {
+        console.log(selectedEdges);
+        publishDeleteNodes({nodes: selectedNodes, viewId});
+    }, [publishDeleteNodes, viewId, selectedNodes, selectedEdges]);
 
     const onNodeDragStart = useCallback((evt, node) => {
     console.log("dragStart");
@@ -223,7 +232,7 @@ const FlowView = () => {
     const onNodeDrag = () => {};
 
     const onNodeDragStop = useCallback((evt, node) => {
-    console.log("dragStop");
+        console.log("dragStop");
         publishNodeDragStop({id: node.id, viewId});
     }, [publishNodeDragStop, viewId]);
  
@@ -248,11 +257,18 @@ const FlowView = () => {
         publishPointerMove({x, y, viewId});
     }
 
+    const onSelectionChange = useCallback((params) => {
+        const {nodes, edges} = params;
+        setSelectedNodes(nodes.map((node) => node.id));
+        setSelectedEdges(edges.map((edge) => edge.id));
+    }, []);
+
     return (
         <ReactFlowProvider>
             <div id="all">
             <div id="sidebar">
-                <CreateNodeButton id="createNode" onClick={create}/>
+                <CreateNodeButton id="createNode" onClick={createNode}/>
+                <DeleteNodeButton id="deleteNode" onClick={deleteNodes}/>
                 <UndoButton id="undo" onClick={undo}/>
                 <RedoButton id="redo" onClick={redo}/>
             </div>
@@ -267,6 +283,8 @@ const FlowView = () => {
                 onNodeDragStart={onNodeDragStart}
                 onNodeDrag={onNodeDrag}
                 onNodeDragStop={onNodeDragStop}
+
+                onSelectionChange={onSelectionChange}
 
                 onConnect={myOnConnect}
                 onInit={onInit}

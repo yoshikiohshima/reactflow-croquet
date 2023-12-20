@@ -69,6 +69,7 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "updateNodes", this.updateNodes);
         this.subscribe(this.id, "addEdge", this.addEdge);
         this.subscribe(this.id, "addNode", this.addNode);
+        this.subscribe(this.id, "deleteNodes", this.deleteNodes);
         this.subscribe(this.id, "updateText", this.updateText);
         // this.subscribe(this.id, "updateTextNode", this.updateTextNode);
 
@@ -211,6 +212,17 @@ export class FlowModel extends Model {
         this.publish(this.id, "nodeAdded", {node: action.node, viewId: action.viewId});
     }
 
+    deleteNodes(data) {
+        const {viewId} = data;
+        const actionId = this.nextActionId++;
+
+        const action = {actionId, viewId, command: "deleteNodes", action: data};
+    
+        this.storeActionForUndo(viewId, action);
+        this.processAction(action);
+        this.publish(this.id, "nodeAdded");
+    }
+
     addTodo(data) {
         const viewId = data.viewId;
         const actionId = this.nextActionId++;
@@ -277,12 +289,14 @@ export class FlowModel extends Model {
             this.nodes[index] = {...this.nodes[index],
                                  position: {...action.action.position},
                                  positionAbsolute: {...action.action.positionAbsolute}};
+        } else if (action.command === "deleteNodes") {
+            this.nodes = this.nodes.filter((node) => !action.action.nodes.includes(node.id))           
         } else if (action.command === "addTodo") {
             console.log("addTodo", action);
             const index = this.findNodeIndex(action.action.id);
             if (index < 0) {return;}
             this.nodes = [...this.nodes];
-            const node = {...this.nodes[index]} as Node & {maxId: number};
+            const node = {...this.nodes[index]};
             const todoId = action.action.todoId;
             this.nodes[index] = node;
             node.data = {...node.data};
