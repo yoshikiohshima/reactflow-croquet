@@ -290,7 +290,11 @@ export class FlowModel extends Model {
                                  position: {...action.action.position},
                                  positionAbsolute: {...action.action.positionAbsolute}};
         } else if (action.command === "deleteNodes") {
-            this.nodes = this.nodes.filter((node) => !action.action.nodes.includes(node.id))           
+            this.nodes = this.nodes.filter((node) => !action.action.nodes.includes(node.id));
+            this.edges = this.edges.filter((edge) => {
+                return !action.action.nodes.includes(edge.source)
+                    && !action.action.nodes.includes(edge.target);
+            });
         } else if (action.command === "addTodo") {
             console.log("addTodo", action);
             const index = this.findNodeIndex(action.action.id);
