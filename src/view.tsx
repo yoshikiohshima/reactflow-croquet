@@ -19,7 +19,7 @@ import {
 } from "@croquet/react";
 
 import {CustomNode, TextNode, ToDoListNode, MonacoEditorNode} from './CustomNode';
-import {CreateNodeButton, DeleteNodeButton, UndoButton, RedoButton} from './Buttons';
+import {CreateNodeButton, DeleteObjectsButton, UndoButton, RedoButton} from './Buttons';
 
 import 'reactflow/dist/style.css';
 import './overview.css';
@@ -102,7 +102,7 @@ const FlowView = () => {
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
     const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
     const publishAddNode = usePublish((data) => [model.id, 'addNode', data]);
-    const publishDeleteNodes = usePublish((data) => [model.id, 'deleteNodes', data]);
+    const publishDeleteObjects = usePublish((data) => [model.id, 'deleteObjects', data]);
     const publishPointerMove = usePublish((data) => [model.id, 'pointerMove', data]);
     const publishUndo = usePublish((data) => [model.id, 'undo', data]);
     const publishRedo = usePublish((data) => [model.id, 'redo', data]);
@@ -216,10 +216,9 @@ const FlowView = () => {
         publishAddNode({node, viewId});
     }, [publishAddNode, viewId, model.pointerMap]);
 
-    const deleteNodes = useCallback((_evt) => {
-        console.log(selectedEdges);
-        publishDeleteNodes({nodes: selectedNodes, viewId});
-    }, [publishDeleteNodes, viewId, selectedNodes, selectedEdges]);
+    const deleteObjects = useCallback((_evt) => {
+        publishDeleteObjects({nodes: selectedNodes, edges: selectedEdges, viewId});
+    }, [publishDeleteObjects, viewId, selectedNodes, selectedEdges]);
 
     const onNodeDragStart = useCallback((evt, node) => {
     console.log("dragStart");
@@ -268,7 +267,7 @@ const FlowView = () => {
             <div id="all">
             <div id="sidebar">
                 <CreateNodeButton id="createNode" onClick={createNode}/>
-                <DeleteNodeButton id="deleteNode" onClick={deleteNodes}/>
+                <DeleteObjectsButton id="deleteObjects" onClick={deleteObjects}/>
                 <UndoButton id="undo" onClick={undo}/>
                 <RedoButton id="redo" onClick={redo}/>
             </div>

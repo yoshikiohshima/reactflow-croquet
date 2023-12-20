@@ -4,7 +4,7 @@ export function CreateNodeButton(props) {
     );
 }
 
-export function DeleteNodeButton(props) {
+export function DeleteObjectsButton(props) {
     return (
         <button onClick={props.onClick} style={{width: 80, height: 80}}>Delete</button>
     );

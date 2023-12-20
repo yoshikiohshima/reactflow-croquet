@@ -69,7 +69,7 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "updateNodes", this.updateNodes);
         this.subscribe(this.id, "addEdge", this.addEdge);
         this.subscribe(this.id, "addNode", this.addNode);
-        this.subscribe(this.id, "deleteNodes", this.deleteNodes);
+        this.subscribe(this.id, "deleteObjects", this.deleteObjects);
         this.subscribe(this.id, "updateText", this.updateText);
         // this.subscribe(this.id, "updateTextNode", this.updateTextNode);
 
@@ -212,15 +212,16 @@ export class FlowModel extends Model {
         this.publish(this.id, "nodeAdded", {node: action.node, viewId: action.viewId});
     }
 
-    deleteNodes(data) {
+    deleteObjects(data) {
         const {viewId} = data;
         const actionId = this.nextActionId++;
 
-        const action = {actionId, viewId, command: "deleteNodes", action: data};
+        const action = {actionId, viewId, command: "deleteObjects", action: data};
     
         this.storeActionForUndo(viewId, action);
         this.processAction(action);
         this.publish(this.id, "nodeAdded");
+        this.publish(this.id, "edgeAdded");
     }
 
     addTodo(data) {
@@ -289,10 +290,11 @@ export class FlowModel extends Model {
             this.nodes[index] = {...this.nodes[index],
                                  position: {...action.action.position},
                                  positionAbsolute: {...action.action.positionAbsolute}};
-        } else if (action.command === "deleteNodes") {
+        } else if (action.command === "deleteObjects") {
             this.nodes = this.nodes.filter((node) => !action.action.nodes.includes(node.id));
             this.edges = this.edges.filter((edge) => {
-                return !action.action.nodes.includes(edge.source)
+                return !action.action.edges.includes(edge.id)
+                    && !action.action.nodes.includes(edge.source)
                     && !action.action.nodes.includes(edge.target);
             });
         } else if (action.command === "addTodo") {
