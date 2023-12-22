@@ -5,7 +5,6 @@ export const defaultValues = {
         {
             id: '1',
             type: 'todo',
-            maxId: 2,
             data: {
                 todos: [
                     {
@@ -68,6 +67,7 @@ export const defaultValues = {
             type: 'text',
             position: { x: 100, y: 400 },
             data: {
+                resizable: true,
                 text: "test text"
             },
         },

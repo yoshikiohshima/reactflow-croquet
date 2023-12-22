@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useRef, useEffect } from 'react';
-import { Handle, useReactFlow, useStoreApi, Position } from 'reactflow';
+import { Handle, useReactFlow, useStoreApi, Position, NodeResizer } from 'reactflow';
 
 import Editor, { } from '@monaco-editor/react';
 
@@ -135,6 +135,7 @@ function Text({ path, text, className}) {
 function TextNodeBody({ id, data }) {
     return (
         <>
+            <NodeResizer minWidth={100} minHeight={30}/>
             <div className="custom-node__header">
                 This is an <strong>ediable text node</strong>
             </div>

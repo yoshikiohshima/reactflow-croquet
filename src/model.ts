@@ -104,7 +104,18 @@ export class FlowModel extends Model {
             const index = this.findNodeIndex(action.id);
             if (index >= 0)  {
                 if (action.type === "dimensions") {
-                    this.nodes[index][action.type] = action[action.type];
+                    if (this.nodes[index].data.resizable) {
+                        if (!this.nodes[index].style) {
+                            this.nodes[index].style = {};
+                        }
+                        if (action.resizing) {
+                            this.nodes[index].style.width = action[action.type].width;
+                            this.nodes[index].style.height = action[action.type].height;
+                        }
+                    }
+                    // this has to be customized for different nodes,
+                    // based on whether the custom node allows the user to resize or not.
+                    // this.nodes[index][action.type] = action[action.type];
                 } else if (action.type === "select") {
                     // console.log("select", viewId);
                     
