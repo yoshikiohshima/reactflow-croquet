@@ -58,6 +58,11 @@
   padding: 10px;
 }
 
+.custom-node__text {
+    height: calc(100% - 60px);
+    resize: none;
+}
+
 .custom-node__select {
   position: relative;
   margin-bottom: 10px;

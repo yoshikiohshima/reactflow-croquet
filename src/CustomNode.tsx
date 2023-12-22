@@ -139,7 +139,7 @@ function TextNodeBody({ id, data }) {
             <div className="custom-node__header">
                 This is an <strong>ediable text node</strong>
             </div>
-            <Text path={id} text={data.text} className={"custom-node__body"}/>
+            <Text path={id} text={data.text} className={"custom-node__body custom-node__text"}/>
         </>
     );
 }
