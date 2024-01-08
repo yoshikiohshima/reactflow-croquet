@@ -32,22 +32,15 @@ const minimapStyle = {
 
 const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInstance);
 
-const ViewportDisplay = (props) => {
+const Pointers = (props) => {
+    const {viewport, model, viewId, callback} = props;
     const elem = document.getElementById("flow");
     const {top, left} = elem ? elem.getBoundingClientRect() : {top: 0, left: 0};
     const {x, y, zoom} = useViewport();
-    const callback = props.callback;
+
     useEffect(() => {
         callback(x, y, zoom, top, left);
     }, [x, y, zoom, top, left, callback]);
-    
-    return (
-        <div style={{display: "none"}}></div>
-    );
-}
-
-const Pointers = (props) => {
-    const {viewport, model, viewId} = props;
 
     const divs = [...model.pointerMap].map(([v, p]) => {
         const x = p.x * viewport.zoom + viewport.x + viewport.left;
@@ -296,8 +289,7 @@ const FlowView = () => {
             <Background color="#aaa" gap={16}/>
             </ReactFlow>
             </div>
-            <ViewportDisplay callback={viewportCallback}/>
-            <Pointers pointers={pointers} model={model} viewport={viewport} viewId={viewId}/>
+            <Pointers pointers={pointers} model={model} viewport={viewport} viewId={viewId} callback={viewportCallback}/>
         </ReactFlowProvider>
   );
 };

@@ -283,8 +283,6 @@ export class FlowModel extends Model {
         stack.push(action);
         this.eventBuffer.push(action);
 
-        console.log(action, this);
-
         this.maybeTakeUndoSnapshot();
     }
 
