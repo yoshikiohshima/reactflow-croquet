@@ -324,7 +324,7 @@ const FlowView = () => {
             </ReactFlow>
             </div>
             <Pointers pointers={pointers} model={model} viewport={viewport} viewId={viewId} callback={viewportCallback}/>
-            <RemoteConnections connections={remoteConnections}/>
+            <RemoteConnections connections={remoteConnections} viewport={viewport}/>
             
         </ReactFlowProvider>
   );

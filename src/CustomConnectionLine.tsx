@@ -42,11 +42,31 @@ export function CustomConnectionLine(props) {
 }
 
 export function RemoteConnections(props) {
-    const connections = props.connections.map((pair) => <CustomConnectionLine key={pair[0]} {...pair[1]}/>);
-    console.log(connections.length);
+    const {viewport} = props;
+// const elem = document.getElementById("flow");
+ //   const {top, left} = elem ? elem.getBoundingClientRect() : {top: 0, left: 0};
+ //   const {x, y, zoom} = useViewport();
     
+    const connections = props.connections.map((pair) => {
+        const { fromX, fromY, toX, toY, connectionLineStyle, viewId } = pair[1];
+        const [edgePath] = getStraightPath({
+            sourceX: fromX,
+            sourceY: fromY,
+            targetX: toX,
+            targetY: toY,
+        });
+
+        const transform = `translateX(${viewport.x + viewport.left}px) translateY(${viewport.y + viewport.top}px) scale(${viewport.zoom})`;
+   
+        return (
+            <g key={viewId}>
+                <path style={{transform, ...connectionLineStyle}} fill="none" d={edgePath} />
+            </g>
+        );
+    });
+
     return (
-        <svg id="remoteConnections" style={{position: "fixed", top: 0, left: 0}}>
+        <svg id="remoteConnections" fill="blue" style={{position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none"}}>
             {connections}
         </svg>
     )
