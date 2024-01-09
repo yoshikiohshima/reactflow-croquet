@@ -21,6 +21,8 @@ import {
 import {CustomNode, TextNode, ToDoListNode, MonacoEditorNode} from './CustomNode';
 import {CreateNodeButton, DeleteObjectsButton, UndoButton, RedoButton} from './Buttons';
 
+import {CustomConnectionLine, RemoteConnections} from './CustomConnectionLine';
+
 import 'reactflow/dist/style.css';
 import './overview.css';
 
@@ -28,6 +30,11 @@ import {FlowModel} from "./model";
 
 const minimapStyle = {
     height: 120,
+};
+
+const connectionLineStyle = {
+  strokeWidth: 3,
+  stroke: 'black',
 };
 
 const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInstance);
@@ -79,6 +86,9 @@ const FlowView = () => {
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
     const [pointers, setPointers] = useState(0);
 
+    const emptyArray = [];
+    const [remoteConnections, setRemoteConnections] = useState(emptyArray);
+
     const nodeOwnerMap = model.nodeOwnerMap;
 
     // we are using a bit of a shortcut here to adjust the edge type
@@ -103,6 +113,8 @@ const FlowView = () => {
     const publishNodeDragStart = usePublish((data) => [model.id, "nodeDragStart", data]);
     // const publishNodeDrag = usePublish((data) => [model.id, "nodeDrag", data]);
     const publishNodeDragStop = usePublish((data) => [model.id, 'nodeDragStop', data]);
+
+    const publishUpdateConnection = usePublish((data) => [model.id, 'updateConnection', data]);
 
     useSubscribe(model.id, "nodeUpdated", (data:any) => {
         if (viewId === data.viewId) {return;}
@@ -169,6 +181,17 @@ const FlowView = () => {
         setPointers(pointers + 1);
     });
 
+    useSubscribe(model.id, "connectionUpdated", (data) => {
+        console.log("connectionUpdated", data, data.size);
+
+        if (model.connections.size === 0) {
+            setRemoteConnections(emptyArray);
+            return;
+        }
+        const connections = [...model.connections].filter((pair) => pair[0] !== viewId);
+        setRemoteConnections(connections);
+    });
+
     const myOnNodesChange = (actions) => {
         const filtered = actions.filter((action) => !nodeOwnerMap.get(action.id) || nodeOwnerMap.get(action.id)?.viewId === viewId);
         const now = Date.now();
@@ -183,10 +206,16 @@ const FlowView = () => {
         onEdgesChange(actions);
     };
 
+    const onConnectEnd = useCallback((evt) => {
+        publishUpdateConnection({viewId, done: true});
+        console.log("onConnectEnd", evt);
+
+    }, [publishUpdateConnection, viewId]);
+
     const myOnConnect = useCallback((params) => {
         // presumably this is a new connection, so no need to check if somebody else has grabbed it.
         console.log("connect", params);
-        publishAddEdge({action: params, viewId});
+          publishAddEdge({action: params, viewId});
         setEdges((eds) => addEdge(params, eds));
     }, [publishAddEdge, setEdges, viewId]);
 
@@ -214,7 +243,6 @@ const FlowView = () => {
     }, [publishDeleteObjects, viewId, selectedNodes, selectedEdges]);
 
     const onNodeDragStart = useCallback((evt, node) => {
-    console.log("dragStart");
         if (nodeOwnerMap.get(node.id) && nodeOwnerMap.get(node.id).viewId !== viewId) {return;}
         const now = Date.now();
         setDragInfo({viewId, node, now});
@@ -272,11 +300,17 @@ const FlowView = () => {
                 onEdgesChange={myOnEdgesChange}
                 onPointerMove={pointerMove}
 
+                connectionLineComponent={CustomConnectionLine}
+                connectionLineStyle={connectionLineStyle}
+
                 onNodeDragStart={onNodeDragStart}
                 onNodeDrag={onNodeDrag}
                 onNodeDragStop={onNodeDragStop}
 
                 onSelectionChange={onSelectionChange}
+
+                onClickConnectEnd={onConnectEnd}
+                onConnectEnd={onConnectEnd}
 
                 onConnect={myOnConnect}
                 onInit={onInit}
@@ -290,6 +324,8 @@ const FlowView = () => {
             </ReactFlow>
             </div>
             <Pointers pointers={pointers} model={model} viewport={viewport} viewId={viewId} callback={viewportCallback}/>
+            <RemoteConnections connections={remoteConnections}/>
+            
         </ReactFlowProvider>
   );
 };

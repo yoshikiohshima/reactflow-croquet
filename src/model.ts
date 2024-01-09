@@ -25,6 +25,8 @@ export class FlowModel extends Model {
     eventBuffer: Array<{actionId:number}>;
     undoLimit: number;
 
+    connections: Map<string, Array<Action>>;
+
     loadingPersistentData: boolean;
     loadingPersistentDataErrored: boolean;
     lastPersistTime: number;
@@ -48,6 +50,7 @@ export class FlowModel extends Model {
 
         this.nodeOwnerMap = new Map();
         this.pointerMap = new Map(); // {viewId -> {x, y color}}
+        this.connections = new Map(); // {viewId -> {}}
 
         this.undoLimit = 20;
         this.persistPeriod = 30 * 1000;
@@ -86,6 +89,8 @@ export class FlowModel extends Model {
 
         this.subscribe(this.id, "undo", this.undo);
         this.subscribe(this.id, "redo", this.redo);
+
+        this.subscribe(this.id, "updateConnection", this.updateConnection);
 
         // this.subscribe(this.sessionId, "triggerPersist", "triggerPersist");
     }
@@ -489,6 +494,17 @@ export class FlowModel extends Model {
         undoList.push(lastCommand);
         this.publish(this.id, "nodeAdded", {});
         this.publish(this.id, "edgeAdded", {});
+    }
+
+    updateConnection(data) {
+        const {viewId, done} = data;
+        if (done) {
+            console.log("done", this.connections, viewId)
+            this.connections.delete(viewId);
+        } else {
+            this.connections.set(viewId, data);
+        }
+        this.publish(this.id, "connectionUpdated", this.connections);
     }
 
     findNodeIndex(nodeId) {
