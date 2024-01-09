@@ -181,8 +181,7 @@ const FlowView = () => {
         setPointers(pointers + 1);
     });
 
-    useSubscribe(model.id, "connectionUpdated", (data) => {
-        console.log("connectionUpdated", data, data.size);
+    useSubscribe(model.id, "connectionUpdated", (_data) => {
 
         if (model.connections.size === 0) {
             setRemoteConnections(emptyArray);
