@@ -71,16 +71,7 @@ export const defaultValues = {
                 text: "test text"
             },
         },
-        {
-            id: '6',
-            type: 'monaco',
-            position: { x: 300, y: 400 },
-            data: {
-                text: "test text"
-            },
-        },
     ],
-
     edges: [
         {
             id: 'e4-5',

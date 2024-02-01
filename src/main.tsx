@@ -1,16 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import {CroquetRoot} from '@croquet/react';
+import {CroquetRoot, App as CroquetApp} from '@croquet/react';
 
 import {FlowModel} from "./model.ts";
 import FlowView from './view';
 
 import './index.css';
-
-import {
-    InCroquetSession,
-    App as CroquetApp
-} from "@croquet/react";
 
 function App() {
   const sessionParams = {
