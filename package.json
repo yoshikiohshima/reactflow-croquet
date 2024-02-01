@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@croquet/react": "^1.2.0",
+    "@croquet/react": "^1.4.1",
     "@monaco-editor/react": "^4.6.0",
     "reactflow": "^11.10.1"
   },
