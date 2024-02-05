@@ -271,7 +271,7 @@ const FlowView = () => {
 
     useEffect(() => {
         if (left) {
-	    croquetView.session.leave();
+	    (croquetView as any).session.leave();
 	}
     }, [croquetView, left]);
 
