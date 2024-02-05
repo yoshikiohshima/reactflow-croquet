@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useContext } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
     useViewport,
@@ -16,10 +16,11 @@ import {
     useViewId,
     useModelRoot,
     useSubscribe,
+    CroquetContext,
 } from "@croquet/react";
 
 import {CustomNode, TextNode, ToDoListNode} from './CustomNode';
-import {CreateNodeButton, DeleteObjectsButton, UndoButton, RedoButton} from './Buttons';
+import {CreateNodeButton, DeleteObjectsButton, UndoButton, RedoButton, LeaveButton} from './Buttons';
 
 import {CustomConnectionLine, RemoteConnections} from './CustomConnectionLine';
 
@@ -75,6 +76,7 @@ const nodeTypes = {
 const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
+    const croquetView = useContext(CroquetContext);
     const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
 
@@ -87,6 +89,7 @@ const FlowView = () => {
 
     const emptyArray = [];
     const [remoteConnections, setRemoteConnections] = useState(emptyArray);
+    const [left, setLeft] = useState(false);
 
     const nodeOwnerMap = model.nodeOwnerMap;
 
@@ -262,6 +265,16 @@ const FlowView = () => {
         publishRedo({viewId});
     }, [publishRedo, viewId]);
 
+    const leave = useCallback((_evt) => {
+        setLeft(true);
+    }, [croquetView]);
+
+    useEffect(() => {
+        if (left) {
+	    croquetView.session.leave();
+	}
+    }, [croquetView, left]);
+
     const viewportCallback = useCallback((x, y, zoom, top, left) => {
         // console.log(x, y, zoom, top, left);
         if (viewport.x === x && viewport.y === y && viewport.zoom === zoom &&
@@ -281,6 +294,8 @@ const FlowView = () => {
         setSelectedEdges(edges.map((edge) => edge.id));
     }, []);
 
+    if (left) {return null;}
+
     return (
         <ReactFlowProvider>
             <div id="all">
@@ -289,6 +304,7 @@ const FlowView = () => {
                 <DeleteObjectsButton id="deleteObjects" onClick={deleteObjects}/>
                 <UndoButton id="undo" onClick={undo}/>
                 <RedoButton id="redo" onClick={redo}/>
+                <LeaveButton id="leave" onClick={leave}/>
             </div>
             <ReactFlow
                 id="flow"

@@ -21,3 +21,11 @@ export function RedoButton(props) {
         <button onClick={props.onClick} style={{width: 80, height: 80}}>Redo</button>
     );
 }
+
+export function LeaveButton(props) {
+    return (
+        <button onClick={props.onClick} style={{width: 80, height: 80}}>Leave</button>
+    );
+}
+
+
