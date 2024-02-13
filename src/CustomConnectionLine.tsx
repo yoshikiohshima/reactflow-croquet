@@ -1,5 +1,5 @@
 import {useEffect} from "react";
-import { getStraightPath } from 'reactflow';
+import { getSimpleBezierPath } from 'reactflow';
 import {FlowModel} from "./model";
 
 import {
@@ -10,15 +10,17 @@ import {
 
 export function CustomConnectionLine(props) {
     const model:FlowModel = useModelRoot() as FlowModel;
-    const { fromX, fromY, toX, toY, connectionLineStyle, viewId } = props;
+    const { fromX, fromY, fromPosition, toX, toY, toPosition, connectionLineStyle, viewId } = props;
     // console.log(props);
 
     const myViewId = useViewId();
-    const [edgePath] = getStraightPath({
+    const [edgePath] = getSimpleBezierPath({
         sourceX: fromX,
         sourceY: fromY,
+        sourcePosition: fromPosition,
         targetX: toX,
         targetY: toY,
+        targetPosition: toPosition
     });
 
 
@@ -48,12 +50,14 @@ export function RemoteConnections(props) {
  //   const {x, y, zoom} = useViewport();
     
     const connections = props.connections.map((pair) => {
-        const { fromX, fromY, toX, toY, connectionLineStyle, viewId } = pair[1];
-        const [edgePath] = getStraightPath({
+        const { fromX, fromY, fromPosition, toX, toY, toPosition, connectionLineStyle, viewId } = pair[1];
+        const [edgePath] = getSimpleBezierPath({
             sourceX: fromX,
             sourceY: fromY,
+            sourcePosition: fromPosition,
             targetX: toX,
             targetY: toY,
+            targetPosition: toPosition,
         });
 
         const transform = `translateX(${viewport.x + viewport.left}px) translateY(${viewport.y + viewport.top}px) scale(${viewport.zoom})`;

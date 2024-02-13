@@ -19,6 +19,7 @@ import {
     useModelRoot,
     useSubscribe,
     CroquetContext,
+    CroquetRoot,
 } from "@croquet/react";
 
 import {CustomNode, TextNode} from './CustomNode';
@@ -74,7 +75,16 @@ const nodeTypes = {
     text: TextNode,
 };
 
-const FlowView = () => {
+export const FlowApp = (prop) => {
+    const sessionParams = prop.sessionParams;
+    return (
+        <CroquetRoot sessionParams={sessionParams}>
+          <FlowView/>
+        </CroquetRoot>
+    )
+};
+
+export const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
     const unzip = <T,>(map: Map<string, T>) => {
@@ -326,4 +336,4 @@ const FlowView = () => {
   );
 };
 
-export default FlowView;
+

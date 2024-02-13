@@ -175,18 +175,6 @@ export class FlowModel extends Model {
         this.triggerPersist();
     }
 
-    updateText(data) {
-        const {viewId} = data;
-
-        const actionId = this.nextActionId++;
-        const action = {actionId, viewId, command: "updateText", action: data};
-
-        this.storeActionForUndo(viewId, action);
-        this.processAction(action);
-
-        this.publish(this.id, "textNodeUpdated", data);
-    }
-
     updateData(data: any) {
         const { viewId } = data;
         console.log(`updateData`);
