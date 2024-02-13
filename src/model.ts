@@ -6,26 +6,29 @@ import {defaultValues} from "./defaultValues";
 type Action = {actionId: number};
 
 export class FlowModel extends Model {
-    nodes: Array<Node>;
-    edges: Array<Edge>;
+    nodes: Map<string, Node>;
+    edges: Map<string, Edge>;
     nodeOwnerMap: Map<string, {viewId:string, position:object, positionAbsolute:object}>;
     pointerMap: Map<string, {x: number, y: number, color: string}>;
     nextEdgeId: number;
     nextNodeId: number;
-    nextTodoIds: Map<string, number>;
     nextActionId: number;
-    snapshot: {nodes: Array<Node>,
-               edges: Array<Edge>,
-               nextActionId: number,
-               nextNodeId: number,
-               nextEdgeId: number,
-               nextTodoIds: Map<string, number>};
+    snapshot: {
+        nodes: Array<[string, Node]>;
+        edges: Array<[string, Edge]>;
+        nextActionId: number,
+        nextNodeId: number,
+        nextEdgeId: number,
+    };
     undoStacks: Map<string, Array<Action>>;
     redoStacks: Map<string, Array<Action>>;
     eventBuffer: Array<{actionId:number}>;
     undoLimit: number;
 
     connections: Map<string, Array<Action>>;
+
+    interactionTimeStamps: Map<string, number>;
+    clearInterval: number;
 
     loadingPersistentData: boolean;
     loadingPersistentDataErrored: boolean;
@@ -39,13 +42,11 @@ export class FlowModel extends Model {
             persistentDataLoaded = this.loadPersistentData(persistentData);
         }
         if (!persistentDataLoaded) {
-            this.nodes = JSON.parse(JSON.stringify(defaultValues.nodes));
-            this.edges = JSON.parse(JSON.stringify(defaultValues.edges));
-            this.nextTodoIds = new Map();
+            this.nodes = new Map(JSON.parse(JSON.stringify(defaultValues.nodes)).map((node) => [node.id, node]))
+            this.edges = new Map(JSON.parse(JSON.stringify(defaultValues.edges)).map((edge) => [edge.id, edge]));
             this.nextEdgeId = 0;
             this.nextNodeId = 0;
             this.nextActionId = 0;
-            this.initializeTodoIds();
         }
 
         this.nodeOwnerMap = new Map();
@@ -61,7 +62,7 @@ export class FlowModel extends Model {
             nextActionId: this.nextActionId,
             nextNodeId: this.nextNodeId,
             nextEdgeId: this.nextEdgeId,
-            nextTodoIds: this.nextTodoIds});
+        });
 
         this.undoStacks = new Map();
         this.redoStacks = new Map();
@@ -73,16 +74,11 @@ export class FlowModel extends Model {
         this.subscribe(this.id, "addEdge", this.addEdge);
         this.subscribe(this.id, "addNode", this.addNode);
         this.subscribe(this.id, "deleteObjects", this.deleteObjects);
-        this.subscribe(this.id, "updateText", this.updateText);
-        // this.subscribe(this.id, "updateTextNode", this.updateTextNode);
+        this.subscribe(this.id, `updateData`, this.updateData);
 
         this.subscribe(this.id, "nodeDragStart", this.nodeDragStart);
         this.subscribe(this.id, "nodeDrag", this.nodeDrag);
         this.subscribe(this.id, "nodeDragStop", this.nodeDragStop);
-
-        this.subscribe(this.id, "addTodo", this.addTodo);
-        this.subscribe(this.id, "removeTodo", this.removeTodo);
-        this.subscribe(this.id, "checkBoxChanged", this.checkBoxChanged);
         
         this.subscribe(this.id, "pointerMove", this.pointerMove);
         this.subscribe(this.sessionId, "view-exit", this.viewExit);
@@ -92,30 +88,27 @@ export class FlowModel extends Model {
 
         this.subscribe(this.id, "updateConnection", this.updateConnection);
 
+        this.clearInterval = 10 * 1000;
+        this.interactionTimeStamps = new Map();
+        this.cancelFuture(`maybeClearInteraction`);
+        this.maybeClearInteraction();
+        
         // this.subscribe(this.sessionId, "triggerPersist", "triggerPersist");
-    }
-
-    initializeTodoIds() {
-        this.nodes.forEach((node) => {
-            if (node.type === "todo") {
-                this.nextTodoIds.set(node.id, node.data.todos.length);
-            }
-        });
     }
 
     updateNodes(data) {
         const {actions, viewId} = data;
         actions.forEach((action) => {
-            const index = this.findNodeIndex(action.id);
-            if (index >= 0)  {
+            const node = this.nodes.get(action.id);
+            if (node) {
                 if (action.type === "dimensions") {
-                    if (this.nodes[index].data.resizable) {
-                        if (!this.nodes[index].style) {
-                            this.nodes[index].style = {};
+                    if (node.data.resizable) {
+                        if (!node.style) {
+                            node.style = {};
                         }
                         if (action.resizing) {
-                            this.nodes[index].style.width = action[action.type].width;
-                            this.nodes[index].style.height = action[action.type].height;
+                            node.style.width = action.dimensions?.width;
+                            node.style.height = action.dimensions?.height;
                         }
                     }
                     // this has to be customized for different nodes,
@@ -123,13 +116,12 @@ export class FlowModel extends Model {
                     // this.nodes[index][action.type] = action[action.type];
                 } else if (action.type === "select") {
                     // console.log("select", viewId);
-                    
                 } else if (action.type === "position" && action.dragging) {
                     if (this.nodeOwnerMap.get(action.id)?.viewId !== viewId) {
                         return;
                     }
-                    this.nodes[index][action.type] = action[action.type];
-                    this.nodes[index]["positionAbsolute"] = action["positionAbsolute"];
+                    node.position = action[action.type];
+                    node.positionAbsolute = action. positionAbsolute;
                 }
             }
         });
@@ -138,14 +130,15 @@ export class FlowModel extends Model {
 
     nodeDragStart(data) {
         const {action, viewId} = data;
-        const index = this.findNodeIndex(action.id);
-        if (index < 0) {return;}
+        const node = this.nodes.get(action.id);
+        if (!node) {return;}
         if (!this.nodeOwnerMap.get(action.id)) {
             // console.log("set owner", viewId);
             this.nodeOwnerMap.set(action.id, {
                 viewId,
-                position: this.nodes[index]["position"],
-                positionAbsolute: this.nodes[index]["positionAbsolute"]});
+                position: node.position,
+                positionAbsolute: node.positionAbsolute,
+            });
         }
     }
 
@@ -154,9 +147,8 @@ export class FlowModel extends Model {
 
     nodeDragStop(data) {
         const {id, viewId} = data;
-        const index = this.findNodeIndex(id);
-
-        if (index < 0) {
+        const node = this.nodes.get(id);
+        if (!node) {
             this.nodeOwnerMap.delete(id);
             return;
         }
@@ -165,12 +157,16 @@ export class FlowModel extends Model {
         
         const actionId = this.nextActionId++;
         const {position, positionAbsolute} = this.nodeOwnerMap.get(id);
-        const action = {actionId, viewId, command: "moveNode", action: {
-            oldPosition: position,
-            id,
-            oldPositionAbsolute: positionAbsolute,
-            position: this.nodes[index].position,
-            positionAbsolute: this.nodes[index].positionAbsolute
+        const action = {
+            actionId,
+            viewId,
+            command: "moveNode",
+            action: {
+                oldPosition: position,
+                id,
+                oldPositionAbsolute: positionAbsolute,
+                position: node.position,
+                positionAbsolute: node.positionAbsolute
         }};
 
         this.nodeOwnerMap.delete(id);
@@ -189,6 +185,19 @@ export class FlowModel extends Model {
         this.processAction(action);
 
         this.publish(this.id, "textNodeUpdated", data);
+    }
+
+    updateData(data: any) {
+        const { viewId } = data;
+        console.log(`updateData`);
+
+        const actionId = this.nextActionId++;
+        const action = { actionId, viewId, command: `updateData`, action: data };
+
+        this.storeActionForUndo(viewId, action);
+        this.processAction(action);
+
+        this.publish(this.id, `nodeAdded`);
     }
 
     newEdgeId() {
@@ -240,44 +249,6 @@ export class FlowModel extends Model {
         this.publish(this.id, "edgeAdded");
     }
 
-    addTodo(data) {
-        const viewId = data.viewId;
-        const actionId = this.nextActionId++;
-
-        const index = this.findNodeIndex(data.id);
-        if (index < 0) {return;}
-        const node = this.nodes[index];
-        const todoId = this.nextTodoIds.get(node.id) + 1;
-        this.nextTodoIds.set(node.id, todoId);
-        data.todoId = todoId;
-        const action = {actionId, viewId, command: "addTodo", action: data};
-        this.storeActionForUndo(viewId, action);
-        this.processAction(action);
-        this.publish(this.id, "nodeAdded");
-        // it may have to be different event but invokes the same logic on the view side for the moment.
-    }
-
-    removeTodo(data) {
-        const viewId = data.viewId;
-        const actionId = this.nextActionId++;
-        const action = {actionId, viewId, command: "removeTodo", action: data};
-
-        this.storeActionForUndo(viewId, action);
-        this.processAction(action);
-        this.publish(this.id, "nodeAdded");
-        // like addTodo, the event name should be update nodes
-    }
-
-    checkBoxChanged(data) {
-        const {viewId} = data;
-        const actionId = this.nextActionId++;
-        const action = {actionId, viewId, command: "todoCheckBox", action: data};
-        this.storeActionForUndo(viewId, action);
-        this.processAction(action);
-        this.publish(this.id, "nodeAdded");
-        // like addTodo, the event name should be update nodes
-    }
-
     storeActionForUndo(viewId, action) {
         (window as unknown as {flowModel}).flowModel = this;
         let stack = this.undoStacks.get(viewId);
@@ -292,84 +263,55 @@ export class FlowModel extends Model {
     }
 
     processAction(action) {
-        // this should only modify nodes and edges
+        const viewId = action.viewId;
+        this.setInteractionTimeStamp(viewId);
         if (action.command === "addNode") {
-            this.nodes = [...this.nodes, action.node];
+            this.nodes.set(action.node.id, action.node);
         } else if (action.command === "addEdge") {
             // if source or dest node is gone, this I think fails silently
-            this.edges = addEdge(action.action, this.edges);
+            const currentEdges = [...this.edges].map((pair) => pair[1]);
+            const newEdges = addEdge(action.action as unknown as Edge, currentEdges);
+            this.edges = new Map(newEdges.map((edge) => [edge.id, edge]));
         } else if (action.command === "moveNode") {
-            const index = this.findNodeIndex(action.action.id);
-            if (index < 0) {return;}
-            this.nodes[index] = {...this.nodes[index],
-                                 position: {...action.action.position},
-                                 positionAbsolute: {...action.action.positionAbsolute}};
-        } else if (action.command === "deleteObjects") {
-            this.nodes = this.nodes.filter((node) => !action.action.nodes.includes(node.id));
-            this.edges = this.edges.filter((edge) => {
-                return !action.action.edges.includes(edge.id)
-                    && !action.action.nodes.includes(edge.source)
-                    && !action.action.nodes.includes(edge.target);
+            const node = this.nodes.get(action.action.id);
+            if (!node) {return;}
+            this.nodes.set(node.id, {
+                ...node,
+                position: { ...action.action.position },
+                positionAbsolute: { ...action.action.positionAbsolute },
             });
-        } else if (action.command === "addTodo") {
-            console.log("addTodo", action);
-            const index = this.findNodeIndex(action.action.id);
-            if (index < 0) {return;}
-            this.nodes = [...this.nodes];
-            const node = {...this.nodes[index]};
-            const todoId = action.action.todoId;
-            this.nodes[index] = node;
-            node.data = {...node.data};
-            node.data.todos = [...node.data.todos, {id: `t${todoId}`, title: "untitled: " + todoId, checked: false}];
-        } else if (action.command === "removeTodo") {
-            const index = this.findNodeIndex(action.action.id);
-            if (index < 0) {return;}
-            this.nodes = [...this.nodes];
-            const node = {...this.nodes[index]};
-            this.nodes[index] = node;
-            node.data = {...node.data};
-            node.data.todos = [...node.data.todos.filter((todo) => todo.id !== action.action.todoId)];
-        } else if (action.command === "todoCheckBox") {
-            const index = this.findNodeIndex(action.action.id);
-            if (index < 0) {return;}
-            this.nodes = [...this.nodes];
-            const node = this.nodes[index];
-            const todoIndex = node.data.todos.findIndex((todo) => todo.id === action.action.todoId);
-            const data = node.data.todos[todoIndex];
-            data.checked = action.action.checked;
-        } else if (action.command === "updateText") {
-            const {path, text} = action.action;
-            const pathArray = path.split(".");
+        } else if (action.command === "deleteObjects") {
+            action.action.nodes.forEach((deleteId: string) => {
+                this.nodes.delete(deleteId);
+            });
 
-            if (pathArray.length === 1) {
-                // a vanilla text node
-                const index = this.findNodeIndex(path);
-                if (index >= 0) {
-                    this.nodes = [...this.nodes];
-                    this.nodes[index] = {...this.nodes[index], data: {text}};
-                }
-            } else if (pathArray[0] === "todos") {
-                // todo list
-                const index = this.findNodeIndex(pathArray[1]);
-                if (index >= 0) {
-                    const todoIndex = this.nodes[index].data.todos.findIndex((todo) => todo.id === pathArray[2]);
-                    if (todoIndex < 0) {return;}
-                    this.nodes = [...this.nodes];
-                    const node = this.nodes[index];
-                    node.data = {...node.data};
-                    node.data.todos = [...node.data.todos];
-                    const todo = {...node.data.todos[todoIndex]};
-                    todo.title = text;
-                    node.data.todos[todoIndex] = todo;
-                }
+            const newEdges = [...this.edges].filter(([_id, edge]) => {
+                return (
+                    !action.action.edges.includes(edge.id) &&
+                        !action.action.nodes.includes(edge.source) &&
+                        !action.action.nodes.includes(edge.target)
+                );
+            });
+            this.edges = new Map(newEdges);
+        } else if (action.command === `updateData`) {
+            const node = this.nodes.get(action.action.id);
+            if (!node) {
+                return;
             }
+            const newNode = {
+                ...node,
+                data: { ...node.data },
+            };
+            newNode.data[action.action.property] = action.action.value;
+            this.nodes.set(node.id, newNode);
         }
     }
 
     makeSnapshot(data) {
-        const {nodes, edges, nextActionId, nextNodeId, nextEdgeId, nextTodoIds} = data;
-        const snapshot = JSON.parse(JSON.stringify({nodes, edges, nextActionId, nextNodeId, nextEdgeId}));
-        snapshot.nextTodoIds = new Map([...nextTodoIds]);
+        const {nodes, edges, nextActionId, nextNodeId, nextEdgeId} = data;
+        const snapshot = JSON.parse(
+            JSON.stringify(
+                {nodes: [...nodes], edges: [...edges], nextActionId, nextNodeId, nextEdgeId}));
         return snapshot;
     }
 
@@ -383,8 +325,8 @@ export class FlowModel extends Model {
 
         if (this.eventBuffer.length > this.undoLimit * 1.5) {
             const targetIndex = this.eventBuffer.length - this.undoLimit;
-            this.edges = this.snapshot.edges;
-            this.nodes = this.snapshot.nodes;
+            this.edges = new Map(this.snapshot.edges);
+            this.nodes = new Map(this.snapshot.nodes);
 
             for (let i = 0; i < targetIndex; i++) {
                 this.processAction(this.eventBuffer[i]);
@@ -398,7 +340,7 @@ export class FlowModel extends Model {
                 nextActionId: this.nextActionId,
                 nextNodeId: this.nextNodeId,
                 nextEdgeId: this.nextEdgeId,
-                nextTodoIds: this.nextTodoIds});
+            });
 
             for (let i = targetIndex; i < this.eventBuffer.length - 1; i++) {
                 // -1 above, because storeActionForUndo is always followed by processAction call
@@ -452,8 +394,8 @@ export class FlowModel extends Model {
 
         if (index < 0) {return}
 
-        this.nodes = JSON.parse(JSON.stringify(this.snapshot.nodes));
-        this.edges = JSON.parse(JSON.stringify(this.snapshot.edges));
+        this.nodes = new Map(JSON.parse(JSON.stringify(this.snapshot.nodes)));
+        this.edges = new Map(JSON.parse(JSON.stringify(this.snapshot.edges)));
 
         const newList = [];
 
@@ -507,10 +449,6 @@ export class FlowModel extends Model {
         this.publish(this.id, "connectionUpdated", this.connections);
     }
 
-    findNodeIndex(nodeId) {
-        return this.nodes.findIndex((n) => n.id === nodeId);
-    }
-
     viewExit(viewId) {
         console.log("view-exit", viewId);
         this.nodeOwnerMap.delete(viewId);
@@ -555,6 +493,38 @@ export class FlowModel extends Model {
         return `#${Math.round(r * 255).toString(16).padStart(2, "0")}${Math.round(g * 255).toString(16).padStart(2, "0")}${Math.round(b * 255).toString(16).padStart(2, "0")}`;
     }
 
+    setInteractionTimeStamp(viewId: string) {
+        const now = this.now();
+        // console.log(`set`, viewId, now);
+        this.interactionTimeStamps.set(viewId, now);
+    }
+
+    maybeClearInteraction() {
+        const now = this.now();
+        // console.log(now, this.clearInterval);
+        if (!this.clearInterval) {
+            return;
+        }
+
+        this.future(this.clearInterval).maybeClearInteraction();
+
+        const toDelete = [];
+
+        for (const [viewId, time] of this.interactionTimeStamps) {
+            if (now - time > this.clearInterval) {
+                // console.log(now, time, this.clearInterval, viewId);
+                this.connections.delete(viewId);
+                this.nodeOwnerMap.delete(viewId);
+                toDelete.push(viewId);
+            }
+        }
+
+        if (toDelete.length > 0) {
+            toDelete.forEach((viewId) => this.interactionTimeStamps.delete(viewId));
+            this.publish(this.id, `connectionUpdated`);
+        }
+    }
+
     ensurePersistenceProps() {
         if (!this.persistPeriod) {
             const period = 1 * 60 * 1000;
@@ -587,10 +557,9 @@ export class FlowModel extends Model {
 
     load(data, _version) {
         if (!data) {return false;}
-        this.nodes = data.nodes;
-        this.edges = data.edges;
+        this.nodes = new Map(data.nodes);
+        this.edges = new Map(data.edges);
         this.nextActionId = data.nextActionId;
-        this.nextTodoIds = new Map(data.nextTodoIds);
         return true;
     }
 
@@ -606,8 +575,7 @@ export class FlowModel extends Model {
                 nextActionId: this.nextActionId,
                 nextNodeId: this.nextNodeId,
                 nextEdgeId: this.nextEdgeId,
-                nextTodoIds: this.nextTodoIds});
-            snapshot.nextTodoIds = [...snapshot.nextTodoIds];
+            });
             return {name, version: 1, data: snapshot};
         };
         this.persistSession(func);

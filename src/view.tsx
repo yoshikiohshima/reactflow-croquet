@@ -9,6 +9,8 @@ import ReactFlow, {
     useNodesState,
     useEdgesState,
     Position,
+    Node,
+    Edge,
 } from 'reactflow';
 
 import {
@@ -19,7 +21,7 @@ import {
     CroquetContext,
 } from "@croquet/react";
 
-import {CustomNode, TextNode, ToDoListNode} from './CustomNode';
+import {CustomNode, TextNode} from './CustomNode';
 import {CreateNodeButton, DeleteObjectsButton, UndoButton, RedoButton, LeaveButton} from './Buttons';
 
 import {CustomConnectionLine, RemoteConnections} from './CustomConnectionLine';
@@ -34,7 +36,7 @@ const minimapStyle = {
 };
 
 const connectionLineStyle = {
-  strokeWidth: 3,
+  strokeWidth: 1,
   stroke: 'black',
 };
 
@@ -70,15 +72,22 @@ const Pointers = (props) => {
 const nodeTypes = {
     custom: CustomNode,
     text: TextNode,
-    todo: ToDoListNode,
 };
 
 const FlowView = () => {
     const model:FlowModel = useModelRoot() as FlowModel;
     const viewId = useViewId();
+    const unzip = <T,>(map: Map<string, T>) => {
+      return [...map].map((pair) => pair[1]);
+    };
+    const [nodes, setNodes, onNodesChange] = useNodesState(
+      unzip<Node>(model.nodes),
+    );
+    const [edges, setEdges, onEdgesChange] = useEdgesState(
+      unzip<Edge>(model.edges),
+    );
+
     const croquetView = useContext(CroquetContext);
-    const [nodes, setNodes, onNodesChange] = useNodesState(model.nodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(model.edges);
 
     const [selectedNodes, setSelectedNodes] = useState([]);
     const [selectedEdges, setSelectedEdges] = useState([]);
@@ -92,17 +101,6 @@ const FlowView = () => {
     const [left, setLeft] = useState(false);
 
     const nodeOwnerMap = model.nodeOwnerMap;
-
-    // we are using a bit of a shortcut here to adjust the edge type
-    // this could also be done with a custom edge for example
-    const edgesWithUpdatedTypes = edges.map((edge) => {
-        if (edge.sourceHandle) {
-            const edgeType = "";
-            edge.type = edgeType;
-        }
-
-        return edge;
-    });
 
     const publishNodesChange = usePublish((data) => [model.id, 'updateNodes', data]);
     const publishAddEdge = usePublish((data) => [model.id, 'addEdge', data]);
@@ -120,14 +118,14 @@ const FlowView = () => {
 
     useSubscribe(model.id, "nodeUpdated", (data:any) => {
         if (viewId === data.viewId) {return;}
-        onNodesChange(data.actions);
+	setNodes(unzip(model.nodes));
     });
 
     useSubscribe(model.id, "textNodeUpdated", (data:any) => {
         if (viewId === data.viewId) {
             return;
         }
-        setNodes([...model.nodes]);
+        setNodes(unzip(model.nodes));
     });
 
     useSubscribe(model.id, "updateText", (data:any) => {
@@ -145,21 +143,6 @@ const FlowView = () => {
                     newNodes[index] = {...nodes[index], data: {text}};
                     return newNodes;
                 }
-            } else if (pathArray[0] === "todos") {
-                // a todo list
-                const index = nodes.findIndex((node) => node.id === pathArray[1]);
-                if (index >= 0) {
-                    const newNodes = [...nodes];
-                    const node = newNodes[index];
-                    const todoIndex = node.data.todos.findIndex((todo) => todo.id === pathArray[2]);
-                    node.data = {...node.data}
-                    node.data.todos = [...node.data.todos];
-                    const todo = node.data.todos[todoIndex];
-
-                    todo.title = text;
-                    node.data.todos[todoIndex] = todo;
-                    return newNodes;
-                }
             }
             return nodes;
         });
@@ -171,12 +154,12 @@ const FlowView = () => {
 
     useSubscribe(model.id, "edgeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
-        setEdges((_edges) => model.edges);
+        setEdges((_edges) => unzip(model.edges));
     });
 
     useSubscribe(model.id, "nodeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
-        setNodes([...model.nodes]);
+        setNodes(unzip(model.nodes));
     });
 
     useSubscribe(model.id, "pointerMoved", (_data) => {
@@ -184,7 +167,6 @@ const FlowView = () => {
     });
 
     useSubscribe(model.id, "connectionUpdated", (_data) => {
-
         if (model.connections.size === 0) {
             setRemoteConnections(emptyArray);
             return;
@@ -267,12 +249,12 @@ const FlowView = () => {
 
     const leave = useCallback((_evt) => {
         setLeft(true);
-    }, [croquetView]);
+    }, []);
 
     useEffect(() => {
         if (left) {
-	    (croquetView as any).session.leave();
-	}
+            (croquetView as any).session.leave();
+        }
     }, [croquetView, left]);
 
     const viewportCallback = useCallback((x, y, zoom, top, left) => {
@@ -309,7 +291,7 @@ const FlowView = () => {
             <ReactFlow
                 id="flow"
                 nodes={nodes}
-                edges={edgesWithUpdatedTypes}
+                edges={edges}
                 onNodesChange={myOnNodesChange}
                 onEdgesChange={myOnEdgesChange}
                 onPointerMove={pointerMove}

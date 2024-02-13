@@ -89,7 +89,7 @@ function Text({ path, text, className}) {
         setContent(text);
     }
 
-    const publishTextChange = usePublish((data) => [model.id, 'updateText', data]);
+    const publishDataChange = usePublish((data) => [model.id, 'updateData', data]);
 
     useEffect(() => {
         if (inputRef.current && cursor !== undefined) {
@@ -100,9 +100,9 @@ function Text({ path, text, className}) {
     
     const onChange = useCallback((e) => {
         setCursor(e.target.selectionStart);
-        publishTextChange({path, viewId, text: e.target.value});
+        publishDataChange({id: path, viewId, property: "text", value: e.target.value});
         setContent(e.target.value);
-    }, [publishTextChange, path, viewId]);
+    }, [publishDataChange, path, viewId]);
 
     return (
         <textarea ref={inputRef} className={className} value={content} onChange={onChange}></textarea>

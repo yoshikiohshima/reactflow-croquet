@@ -3,25 +3,6 @@ import { MarkerType, Position } from 'reactflow';
 export const defaultValues = {
     nodes: [
         {
-            id: '1',
-            type: 'todo',
-            data: {
-                todos: [
-                    {
-                        id : "t1",
-                        title: "Task 1",
-                        checked: false,
-                    },
-                    {
-                        id : "t2",
-                        title: "Task 2",
-                        checked: false,
-                    }
-                ]
-            },
-            position: { x: 250, y: 0 },
-        },
-        {
             id: '2',
             type: 'custom',
             position: { x: 100, y: 200 },
