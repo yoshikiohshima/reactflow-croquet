@@ -1,84 +1,24 @@
-import { MarkerType, Position } from 'reactflow';
+const iota = (n) => [...Array(n).keys()];
+const pos = iota(32).map((i) => iota(32).map((j) => ({x: j * 60, y: i * 50}))).flat();
+
+const nodes = pos.map((xy, i) => (
+    {
+        height: 10,
+        id: `${i}`,
+        type: 'input',
+        data: {
+            label: `Input Node${i}`,
+        },
+        position: xy,
+        positionAbsolute : xy,
+        style: {width: 25},
+        zIndex: 100
+    }
+));
+
+const edges = [];
 
 export const defaultValues = {
-    nodes: [
-        {
-            id: '2',
-            type: 'custom',
-            position: { x: 100, y: 200 },
-            data: {
-                selects: {
-                    'handle-0': 'smoothstep',
-                    'handle-1': 'smoothstep',
-                },
-            },
-        },
-        {
-            id: '3',
-            type: 'output',
-            data: {
-                label: 'custom style',
-            },
-            className: 'circle',
-            style: {
-                background: '#2B6CB0',
-                color: 'white',
-            },
-            position: { x: 400, y: 200 },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-        },
-        {
-            id: '4',
-            type: 'output',
-            style: {
-                background: '#63B3ED',
-                color: 'white',
-                width: 100,
-            },
-            data: {
-                label: 'Node',
-            },
-            position: { x: 400, y: 325 },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-        },
-        {
-            id: '5',
-            type: 'text',
-            position: { x: 100, y: 400 },
-            data: {
-                resizable: true,
-                text: "test text"
-            },
-        },
-    ],
-    edges: [
-        {
-            id: 'e4-5',
-            source: '2',
-            target: '3',
-            type: 'smoothstep',
-            sourceHandle: 'handle-0',
-            data: {
-                selectIndex: 0,
-            },
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-            },
-        },
-        {
-            id: 'e4-6',
-            source: '2',
-            target: '4',
-            type: 'smoothstep',
-            sourceHandle: 'handle-1',
-            data: {
-                selectIndex: 1,
-            },
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-            },
-        },
-    ]
+    nodes,
+    edges
 }
