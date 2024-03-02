@@ -1,9 +1,8 @@
 const iota = (n) => [...Array(n).keys()];
-const pos = iota(32).map((i) => iota(32).map((j) => ({x: j * 60, y: i * 50}))).flat();
+const pos = iota(50).map((i) => iota(50).map((j) => ({x: j * 120, y: i * 80}))).flat();
 
 const nodes = pos.map((xy, i) => (
     {
-        height: 10,
         id: `${i}`,
         type: 'input',
         data: {
@@ -11,10 +10,10 @@ const nodes = pos.map((xy, i) => (
         },
         position: xy,
         positionAbsolute : xy,
-        style: {width: 25},
-        zIndex: 100
     }
 ));
+
+/*const nodes = [];*/
 
 const edges = [];
 
