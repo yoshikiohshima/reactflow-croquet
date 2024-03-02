@@ -45,6 +45,7 @@ const onInit = (reactFlowInstance) => console.log('flow loaded:', reactFlowInsta
 
 const Pointers = (props) => {
     const {viewport, model, viewId, callback} = props;
+    const [pointers, setPointers] = useState(0);
     const elem = document.getElementById("flow");
     const {top, left} = elem ? elem.getBoundingClientRect() : {top: 0, left: 0};
     const {x, y, zoom} = useViewport();
@@ -52,6 +53,10 @@ const Pointers = (props) => {
     useEffect(() => {
         callback(x, y, zoom, top, left);
     }, [x, y, zoom, top, left, callback]);
+
+    useSubscribe(model.id, "pointerMoved", (_data) => {
+        setPointers(pointers + 1);
+    });
 
     const divs = [...model.pointerMap].map(([v, p]) => {
         const x = p.x * viewport.zoom + viewport.x + viewport.left;
@@ -104,7 +109,6 @@ export const FlowView = () => {
 
     const [dragInfo, setDragInfo] = useState({now: 0, viewId: undefined, node: null});
     const [viewport, setViewport] = useState({x: 0, y: 0, zoom: 1, top: 0, left: 0});
-    const [pointers, setPointers] = useState(0);
 
     const emptyArray = [];
     const [remoteConnections, setRemoteConnections] = useState(emptyArray);
@@ -170,10 +174,6 @@ export const FlowView = () => {
     useSubscribe(model.id, "nodeAdded", (_data) => {
         // if (viewId === data.viewId) {return;}
         setNodes(unzip(model.nodes));
-    });
-
-    useSubscribe(model.id, "pointerMoved", (_data) => {
-        setPointers(pointers + 1);
     });
 
     useSubscribe(model.id, "connectionUpdated", (_data) => {
@@ -329,7 +329,7 @@ export const FlowView = () => {
             <Background color="#aaa" gap={16}/>
             </ReactFlow>
             </div>
-            <Pointers pointers={pointers} model={model} viewport={viewport} viewId={viewId} callback={viewportCallback}/>
+            <Pointers model={model} viewport={viewport} viewId={viewId} callback={viewportCallback}/>
             <RemoteConnections connections={remoteConnections} viewport={viewport}/>
             
         </ReactFlowProvider>
